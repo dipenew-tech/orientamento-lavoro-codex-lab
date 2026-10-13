@@ -1,0 +1,93 @@
+@import "tailwindcss";
+
+@layer utilities {
+  @media print {
+    /* Hide non-essential UI elements when printing */
+    header,
+    nav,
+    aside,
+    button,
+    .no-print,
+    .no-print-break-indicator {
+      display: none !important;
+    }
+
+    /* Reset background and text colors for print */
+    body, html {
+      background-color: #ffffff !important;
+      color: #111827 !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      font-family: Arial, Helvetica, sans-serif !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+
+    /* Container setup for printed document */
+    #printable_letter_area {
+      position: absolute !important;
+      top: 0 !important;
+      left: 0 !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      box-shadow: none !important;
+      border: none !important;
+      background: #ffffff !important;
+      color: #111827 !important;
+      font-size: 11pt !important;
+      line-height: 1.85 !important;
+    }
+
+    /* Page configuration with optimal A4 print margins */
+    @page {
+      size: A4 portrait;
+      margin: 18mm 16mm 18mm 16mm;
+    }
+
+    /* Page breaks */
+    .print-page-break {
+      display: block !important;
+      page-break-before: always !important;
+      break-before: page !important;
+      height: 0 !important;
+      margin: 0 !important;
+    }
+
+    /* Prevent breaking inside cards or items */
+    .print-card,
+    .print-avoid-break {
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
+      margin-bottom: 0.75rem !important;
+    }
+
+    /* Typographic enhancements for print readability */
+    .print-paragraph {
+      font-size: 11pt !important;
+      line-height: 1.85 !important;
+      margin-bottom: 1.1rem !important;
+      text-align: justify !important;
+      color: #1f2937 !important;
+    }
+
+    .print-header-title {
+      font-size: 15pt !important;
+      font-weight: bold !important;
+      color: #1d4ed8 !important;
+      text-align: center !important;
+      margin-bottom: 4pt !important;
+    }
+
+    .print-section-title {
+      font-size: 12pt !important;
+      font-weight: bold !important;
+      color: #1d4ed8 !important;
+      margin-top: 16pt !important;
+      margin-bottom: 8pt !important;
+      page-break-after: avoid !important;
+      break-after: avoid !important;
+    }
+  }
+}

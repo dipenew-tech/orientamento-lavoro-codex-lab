@@ -1,0 +1,6 @@
+{
+  "name": "Orientamento Lavoro",
+  "description": "Strumento per i volontari per l'orientamento lavorativo di persone in cerca di occupazione a Roma, con generazione di lettere informative personalizzate in Word.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
