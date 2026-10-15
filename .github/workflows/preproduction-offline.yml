@@ -1,0 +1,37 @@
+name: Preproduction offline checks
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      OPENAI_LETTER_ENABLED: "false"
+      OPENAI_API_KEY: ""
+      GEMINI_API_KEY: ""
+      CI: "true"
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Run offline contract, adapter and route tests
+        run: node --import tsx --test --test-isolation=none --test-reporter=spec server/*.test.ts
+      - name: Strict type check of new backend integration
+        run: ./node_modules/.bin/tsc --noEmit --strict --target ES2022 --module ESNext --moduleResolution bundler --allowImportingTsExtensions --skipLibCheck server/letterPersonalizer.ts server/letterPersonalizer.test.ts server/generateLetterRoute.ts server/openaiLetterAdapter.ts server/openaiLetterContract.ts
+      - name: Build application
+        run: npm run build
