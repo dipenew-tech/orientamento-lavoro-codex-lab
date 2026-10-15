@@ -1,9 +1,9 @@
 # Contratto narrativo OpenAI
 
 `openaiLetterContract.ts` è un modulo esclusivamente backend, con una dipendenza
-Node integrata (`node:buffer`). Non deve essere importato dal frontend. Non è
-collegato all'applicazione: non chiama provider, non richiede chiavi e non cambia
-il comportamento attuale.
+Node integrata (`node:buffer`). Non deve essere importato dal frontend. Il solo
+contratto non chiama provider e non richiede chiavi; l'integrazione backend descritta
+in fondo a questa pagina è disattivata per default.
 
 L'input contiene soltanto categoria professionale normalizzata, livello d'italiano,
 lingua di output e presenza degli allegati. La professione libera non va inoltrata:
@@ -37,17 +37,17 @@ semanticamente lingua, nomi di strutture, qualifiche, esperienze, offerte o prom
 Un test esplicito documenta questo limite. Servono istruzioni di generazione,
 controlli semantici e revisione dell'operatore prima di integrare il provider.
 
-## Composizione futura (non implementata)
+## Regole di composizione
 
-Partire da `generateLocalFallback`, sostituire esclusivamente i quattro testi
-validati mediante assegnazioni esplicite. Saluto, sezione uffici pubblici,
+Partire da `generateLocalFallback`, aggiungere esclusivamente i quattro testi
+validati mediante assegnazioni esplicite, preservando i testi locali. Saluto, sezione uffici pubblici,
 numerazione, dichiarazioni operative (inclusa Officina), titolo, oggetto,
 destinatario e tutti gli array territoriali rimangono locali. Il modello non deve
 generare né ricevere strutture o recapiti. Nessuno spread dell'output non fidato
 nel `GeneratedLetter`.
 
-Per una lettera multilingue, tutte le risposte necessarie dovranno superare i
-controlli prima di sostituire i testi; altrimenti conservare l'intero fallback.
+Per una lettera multilingue, tutte le risposte necessarie devono superare i
+controlli prima di aggiungere i testi; altrimenti conservare l'intero fallback.
 La coerenza degli allegati e l'indicatore `isLocalFallback` spettano al compositore.
 
 ## Test locali senza API
@@ -76,15 +76,15 @@ gli unici errori globali con i nuovi file. Il generatore non viene modificato.
 I test usano dati sintetici, importano soltanto il contratto e le librerie Node
 integrate: nessun server, timer, SMTP o chiamata esterna viene avviato.
 
-## Adapter backend (non collegato all'applicazione)
+## Adapter backend
 
 `openaiLetterAdapter.ts` usa l'SDK ufficiale `openai@7.34.0`, aggiunto a
 `package.json` e `package-lock.json` con npm e script di installazione disabilitati.
 Per questo intervento usare npm e il relativo lockfile: `bun.lock` resta quello
 preesistente e non descrive ancora la nuova dipendenza. Gemini non è stato rimosso.
-L'SDK richiede Node >=22 (verificato qui su Node 24); il requisito Node >=18 del
-README generale non è sufficiente per il futuro uso dell'adapter. Verificare il
-runtime di deployment prima dell'attivazione. npm ha inoltre riallineato nel
+L'SDK richiede Node >=22 (verificato qui su Node 24). Il requisito è ora esplicito
+nel manifest e nel README generale. Verificare il runtime di deployment prima
+dell'attivazione. npm ha inoltre riallineato nel
 lockfile `nodemailer` e `@types/nodemailer`, già dichiarati nel package.json base
 ma mancanti dal lockfile: non sono nuove dipendenze funzionali dell'adapter.
 L'adapter e il suo test importano l'SDK Node; non devono essere importati dal frontend.
@@ -174,3 +174,73 @@ Fonti ufficiali consultate:
 - https://github.com/openai/openai-node
 - Sorgenti installati `openai/src/resources/responses/responses.ts` (`create`) e
   `openai/src/lib/ResponsesParser.ts` (`addOutputText`).
+
+## Integrazione nell'endpoint: disattivata per default
+
+`server.ts` crea una sola istanza di `createLetterPersonalizer` dopo dotenv e
+registra `createGenerateLetterHandler` su POST `/api/generate-letter`. Il modulo
+di route riceve generatori, notifiche e registrazione statistiche come dipendenze:
+importarlo nei test non avvia server, timer o SMTP. La selezione del database e il
+generatore locale non sono modificati. La route valida tipi e lunghezze prima di
+usare i valori; gli errori interni restituiscono un messaggio generico.
+
+`OPENAI_LETTER_ENABLED=true` è l'unico valore che attiva la personalizzazione.
+Assenza, stringa vuota, `false`, `1` o `TRUE` non chiamano l'adapter. Non esiste un
+parametro frontend per attivarlo. Chiave e modello rimangono nel solo ambiente
+server. Configurare le variabili prima dell'avvio, senza commettere file segreti.
+
+Il personalizzatore parte dalla lettera locale completa. In caso di successo
+antepone i quattro testi narrativi validati alle corrispondenti sezioni locali:
+non sostituisce istruzioni, numerazioni, candidature Officina, riferimenti o
+allegati. Saluto e sezione uffici sono esattamente locali. Gli array territoriali
+sono conservati, inclusi campi tradotti. Questa scelta può rendere il documento
+più lungo e ripetitivo, ma evita di perdere informazioni operative.
+
+Per utenti stranieri genera prima italiano e poi la lingua già scelta localmente:
+soltanto se entrambe le risposte sono valide compone la lettera. Qualunque errore
+restituisce tutti i testi originali, con `isLocalFallback: true` e motivo tecnico
+controllato. Lingua non mappata o sezione tradotta assente causano fallback senza
+chiamate. Non si correggono in questo intervento le euristiche linguistiche locali.
+Il frontend conserva il flag restituito dal server anziché forzarlo a false.
+
+### Limiti di costo dell'endpoint pubblico
+
+`OPENAI_LETTER_MAX_CALLS` imposta il tetto totale dei tentativi per istanza di
+personalizzatore (default 20, intero tra 1 e 100). Non esiste reset automatico:
+dopo l'esaurimento il servizio continua con lettere locali. Una lettera bilingue
+richiede due tentativi e la disponibilità viene controllata prima di iniziare.
+Gli errori consumano quota. Il limite di concorrenza del personalizzatore impedisce
+di avviare composizioni contemporanee; restano anche 10 tentativi/minuto, 1600
+token per chiamata, timeout e circuito dell'adapter. Con il default si possono
+richiedere al massimo 32000 token di output nell'intera vita dell'istanza; non è
+una stima di prezzo e include anche token non effettivamente generati.
+
+L'endpoint non ha autenticazione: un utente abusivo può consumare la quota e
+forzare fallback per gli altri utenti. Il costo AI è limitato per istanza, ma più
+repliche, riavvii e autoscaling moltiplicano il tetto. Prima di attivare in
+produzione usare un progetto provider dedicato con controlli di spesa effettivi,
+un numero di repliche/riavvii controllato e protezione d'accesso al deployment.
+Non abilitare la funzione su un deployment che ricrea istanze senza limiti.
+I limiti in memoria non sostituiscono un contatore distribuito persistente.
+Il percorso resta disattivato finché queste condizioni non sono gestite.
+
+Non sono stati cambiati i comportamenti SMTP preesistenti per valori non censiti,
+né la duplicazione delle statistiche client/server. Anche senza OpenAI il server
+può inviare queste email secondo la sua configurazione esistente.
+
+### Verifiche integrazione offline
+
+```sh
+node --import tsx --test --test-isolation=none --test-reporter=tap server/*.test.ts
+node_modules/.bin/tsc --noEmit --strict --target ES2022 --module ESNext --moduleResolution bundler --allowImportingTsExtensions --skipLibCheck server/letterPersonalizer.ts server/letterPersonalizer.test.ts server/generateLetterRoute.ts server/openaiLetterAdapter.ts server/openaiLetterContract.ts
+node_modules/.bin/tsc --noEmit
+```
+
+I test chiamano il vero handler Express con richiesta/risposta simulate, il
+generatore reale, il rendering server dell'editor e l'esportazione Word in memoria.
+Non viene aperta una porta né avviato `server.ts`. Il fetch globale è bloccato:
+ogni tentativo esterno fa fallire la suite. L'SDK usa soltanto trasporto simulato.
+Gli import dinamici del codice legacy evitano di trascinare nel controllo strict
+isolato errori già presenti e moduli React privi di dichiarazioni nel progetto;
+la compatibilità viene verificata a runtime. Il controllo globale continua a
+segnalare esclusivamente i due TS2353 della baseline in `fallbackGenerator.ts`.

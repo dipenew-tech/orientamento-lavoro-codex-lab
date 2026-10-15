@@ -25,7 +25,7 @@ Applicazione web completa per l'accoglienza, l'orientamento professionale e la g
 
 ## Requisiti
 
-- Node.js >= 18.0.0
+- Node.js >= 22.0.0 (richiesto dall'SDK OpenAI; verificato su Node 24)
 - npm >= 9.0.0
 
 ## Installazione e Avvio Rapido

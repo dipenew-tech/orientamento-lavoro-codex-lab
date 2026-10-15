@@ -353,7 +353,7 @@ export default function App() {
         jobSought: job
       };
 
-      console.log("Attempting live AI letter generation via Gemini...");
+      console.log("Requesting letter generation from server...");
       const response = await fetch("/api/generate-letter", {
         method: "POST",
         headers: {
@@ -368,7 +368,6 @@ export default function App() {
       }
 
       const data: GeneratedLetter = await response.json();
-      data.isLocalFallback = false;
 
       // Save stat record locally as well
       saveLetterStat({
@@ -384,7 +383,7 @@ export default function App() {
         cooperativesCount: data.cooperatives ? data.cooperatives.length : 0,
         publicOfficesCount: data.publicOffices ? data.publicOffices.length : 0,
         schoolsCount: data.italianSchools ? data.italianSchools.length : 0,
-        isLocalFallback: false
+        isLocalFallback: data.isLocalFallback
       });
 
       setGeneratedLetter(data);
