@@ -8,8 +8,11 @@ import dotenv from "dotenv";
 import nodemailer from "nodemailer";
 import { queryLocalDb, searchLocalDatabase, municipioOffices, municipioSchools, localDb } from "./src/lib/localDb";
 import { generateLocalFallback } from "./src/lib/fallbackGenerator";
+import { createGenerateLetterHandler } from "./server/generateLetterRoute";
+import { createLetterPersonalizer } from "./server/letterPersonalizer";
 
 dotenv.config();
+const personalizeLetter = createLetterPersonalizer();
 
 const app = express();
 const PORT = 3000;
@@ -407,86 +410,11 @@ app.post("/api/search-by-municipio", (req, res) => {
 });
 
 // Endpoint per la generazione dell'orientamento
-app.post("/api/generate-letter", async (req, res) => {
-  try {
-    const { nationality, italianLevel, jobSought, zoneResident, zoneJobSought, recipientName, gender, officinaOpportunity } = req.body;
-
-    if (!nationality || !italianLevel || !jobSought || !zoneResident || !zoneJobSought) {
-      return res.status(400).json({ error: "Tutti i campi obbligatori devono essere compilati." });
-    }
-
-    const langInfo = detectLanguageInfo(nationality);
-
-    if (langInfo.isMissing) {
-      console.log(`[LINGUA MANCANTE] Lingua per nazionalità "${nationality}" non censita. Uso Inglese ed invio email a dipenew@gmail.com.`);
-      sendMissingLanguageEmail(nationality).catch(err => {
-        console.error("Error sending missing language email in background:", err);
-      });
-    }
-    const CORE_PROFESSIONS = [
-      "Badante (assistenza anziani)",
-      "Colf/pulizie (servizi domestici)",
-      "Facchino/magazziniere",
-      "Lavapiatti/aiuto cucina",
-      "Pizzaiolo",
-      "Cuoco",
-      "Muratore/Operaio edile",
-      "Custode/portiere",
-      "Cameriere/barista",
-      "Giardiniere",
-      "Segreteria (assistenza d'ufficio/reception)",
-      "Autista (conducente/fattorino)"
-    ];
-
-    // Check if it is one of the core professions
-    const isCore = CORE_PROFESSIONS.some(p => 
-      p.toLowerCase() === jobSought.toLowerCase() || 
-      jobSought.toLowerCase().includes(p.split(" (")[0].toLowerCase()) || 
-      jobSought.toLowerCase().includes(p.split("/")[0].toLowerCase()) ||
-      p.toLowerCase().includes(jobSought.toLowerCase().split(" (")[0])
-    );
-
-    if (!isCore) {
-      console.log(`[ALTRO] Ricevuta richiesta per la professione: "${jobSought}"`);
-      // Invia l'email silenziosa in background (non bloccante) per segnalare la nuova professione
-      sendSilentEmail(jobSought).catch(err => {
-        console.error("Error sending silent email in background:", err);
-      });
-    } else {
-      console.log(`[CORE DB] Generazione istantanea da database locale per: "${jobSought}"`);
-    }
-
-    // Generazione istantanea ad altissima velocità tramite database locale e dizionari nativi
-    const letterData = generateLocalFallback({
-      recipientName, gender, nationality, italianLevel, jobSought, zoneResident, zoneJobSought, officinaOpportunity
-    });
-
-    // Automatically record stat on server
-    const statRecord = {
-      id: `stat_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-      timestamp: new Date().toISOString(),
-      recipientName: recipientName || "Anonimo",
-      gender: gender || "M",
-      nationality,
-      italianLevel,
-      jobSought,
-      zoneResident,
-      zoneJobSought,
-      translationLanguage: letterData.translationLanguage || langInfo.language,
-      officinaOpportunity: !!officinaOpportunity,
-      cooperativesCount: letterData.cooperatives ? letterData.cooperatives.length : 0,
-      publicOfficesCount: letterData.publicOffices ? letterData.publicOffices.length : 0,
-      schoolsCount: letterData.italianSchools ? letterData.italianSchools.length : 0,
-      isLocalFallback: false
-    };
-    serverLetterStats.unshift(statRecord);
-
-    return res.json(letterData);
-  } catch (error: any) {
-    console.error("Error in /api/generate-letter:", error);
-    res.status(500).json({ error: error.message || "Errore interno durante la generazione della lettera." });
-  }
-});
+app.post("/api/generate-letter", createGenerateLetterHandler({
+  generateLocalFallback, personalizeLetter, detectLanguageInfo,
+  sendMissingLanguageEmail, sendSilentEmail,
+  recordStat: stat => { serverLetterStats.unshift(stat); },
+}));
 
 // Daily Progressive Stats Email Scheduler
 async function sendDailyStatsEmail() {
