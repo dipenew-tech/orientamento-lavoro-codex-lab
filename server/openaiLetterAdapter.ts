@@ -7,7 +7,7 @@ import {
   type OpenAILetterSections,
 } from "./openaiLetterContract.ts";
 
-type Code = "invalid_input" | "missing_key" | "invalid_config" | "usage_limit"
+type Code = "invalid_input" | "missing_key" | "invalid_config" | "usage_limit" | "circuit_open"
   | "timeout" | "provider_error" | "invalid_response" | "refused";
 export type AdapterResult = { ok: true; sections: OpenAILetterSections }
   | { ok: false; code: Code };
@@ -72,6 +72,9 @@ export function createOpenAILetterAdapter(options: {
   const now = options.now ?? Date.now;
   let client: LetterClient | undefined;
   let busy = false;
+  // Lifetime budget, never reset by the rate window or late completion. Abort
+  // cannot establish that the remote provider has actually stopped processing.
+  let timeouts = 0;
   let calls: number[] = [];
 
   return async function generate(input: OpenAILetterInput): Promise<AdapterResult> {
@@ -79,6 +82,7 @@ export function createOpenAILetterAdapter(options: {
     if (!safeInput) return { ok: false, code: "invalid_input" };
     if (!key) return { ok: false, code: "missing_key" };
     if (!configured) return { ok: false, code: "invalid_config" };
+    if (timeouts >= 2) return { ok: false, code: "circuit_open" };
     const time = now();
     calls = calls.filter(timestamp => time - timestamp < 60000);
     if (busy || calls.length >= 10) return { ok: false, code: "usage_limit" };
@@ -102,12 +106,12 @@ export function createOpenAILetterAdapter(options: {
               conclusion: { type: "string" } } } } },
       };
       const pending = Promise.resolve().then(() => client!.responses.create(body, { signal: controller.signal }));
-      // Keep the concurrency slot until the request settles, even after timeout.
-      void pending.then(() => { busy = false; }, () => { busy = false; });
+      // No state-changing continuation on pending: a late completion must not
+      // release another call's slot or alter the timeout budget.
       const response = await Promise.race([
         pending,
         new Promise<never>((_, reject) => {
-          timer = setTimeout(() => { controller.abort(); reject(new Error("timeout")); }, timeoutMs);
+          timer = setTimeout(() => { reject(new Error("timeout")); controller.abort(); }, timeoutMs);
         }),
       ]);
       if (response.status !== "completed" || !Array.isArray(response.output)) return { ok: false, code: "invalid_response" };
@@ -117,10 +121,15 @@ export function createOpenAILetterAdapter(options: {
       const parsed = parseOpenAILetterSections(response.output_text, safeInput);
       return parsed.valid ? { ok: true, sections: parsed.sections } : { ok: false, code: "invalid_response" };
     } catch (error) {
-      if (!client) busy = false;
-      return { ok: false, code: controller.signal.aborted || error instanceof OpenAI.APIConnectionTimeoutError ? "timeout" : "provider_error" };
+      if (controller.signal.aborted || error instanceof OpenAI.APIConnectionTimeoutError) {
+        timeouts++;
+        return { ok: false, code: "timeout" };
+      }
+      return { ok: false, code: "provider_error" };
     } finally {
       if (timer) clearTimeout(timer);
+      // One bounded recovery after a timeout; a second timeout opens the circuit.
+      busy = false;
     }
   };
 }

@@ -118,17 +118,74 @@ test("sanitizes network, authentication, rate and construction errors without re
   assert.deepEqual(await adapter(input), { ok: false, code: "provider_error" });
 });
 
-test("aborts timeout and keeps concurrency slot until pending call settles", async () => {
-  let signal: AbortSignal | undefined;
-  let finish!: (value: Reply) => void;
-  const adapter = createOpenAILetterAdapter({ env, timeoutMs: 10, clientFactory: factory(async (_, options) => {
-    signal = options.signal;
-    return new Promise(resolve => { finish = resolve; });
+test("recovers once from a call that never settles even after abort, then opens circuit", async () => {
+  const signals: AbortSignal[] = [];
+  let time = 0;
+  const adapter = createOpenAILetterAdapter({ env, timeoutMs: 10, now: () => time,
+    clientFactory: factory(async (_, options) => {
+      signals.push(options.signal);
+      return new Promise<Reply>(() => {}); // Deliberately ignore abort forever.
+    }) });
+  assert.deepEqual(await adapter(input), { ok: false, code: "timeout" });
+  assert.equal(signals[0].aborted, true);
+  assert.deepEqual(await adapter(input), { ok: false, code: "timeout" });
+  assert.equal(signals[1].aborted, true);
+  time = 120000;
+  for (let n = 0; n < 20; n++) {
+    assert.deepEqual(await adapter(input), { ok: false, code: "circuit_open" });
+  }
+  assert.equal(signals.length, 2);
+});
+
+test("late success cannot change timeout result or release the recovered call's slot", async () => {
+  let firstFinish!: (value: Reply) => void;
+  let secondFinish!: (value: Reply) => void;
+  let started!: () => void;
+  const secondStarted = new Promise<void>(resolve => { started = resolve; });
+  let calls = 0;
+  const adapter = createOpenAILetterAdapter({ env, timeoutMs: 50, clientFactory: factory(async () => {
+    calls++;
+    if (calls === 1) return new Promise(resolve => { firstFinish = resolve; });
+    started();
+    return new Promise(resolve => { secondFinish = resolve; });
+  }) });
+  const firstPromise = adapter(input);
+  const firstResult = await firstPromise;
+  assert.deepEqual(firstResult, { ok: false, code: "timeout" });
+  const secondPromise = adapter(input);
+  await secondStarted;
+  firstFinish(reply());
+  await new Promise<void>(resolve => setImmediate(resolve));
+  assert.deepEqual(await firstPromise, { ok: false, code: "timeout" });
+  assert.deepEqual(firstResult, { ok: false, code: "timeout" });
+  assert.deepEqual(await adapter(input), { ok: false, code: "usage_limit" });
+  assert.equal(calls, 2);
+  secondFinish(reply());
+  assert.deepEqual(await secondPromise, { ok: true, sections });
+});
+
+test("late rejection is handled and does not reset the lifetime timeout budget", async () => {
+  const rejectors: ((error: Error) => void)[] = [];
+  const adapter = createOpenAILetterAdapter({ env, timeoutMs: 10,
+    clientFactory: factory(async () => new Promise<Reply>((_, reject) => { rejectors.push(reject); })) });
+  assert.deepEqual(await adapter(input), { ok: false, code: "timeout" });
+  rejectors[0](new Error("late synthetic failure"));
+  await new Promise<void>(resolve => setImmediate(resolve));
+  assert.deepEqual(await adapter(input), { ok: false, code: "timeout" });
+  rejectors[1](new Error("another late synthetic failure"));
+  await new Promise<void>(resolve => setImmediate(resolve));
+  assert.deepEqual(await adapter(input), { ok: false, code: "circuit_open" });
+});
+
+test("SDK timeout also consumes the recovery budget even if its promise rejects", async () => {
+  let calls = 0;
+  const adapter = createOpenAILetterAdapter({ env, clientFactory: factory(async () => {
+    calls++; throw new OpenAI.APIConnectionTimeoutError();
   }) });
   assert.deepEqual(await adapter(input), { ok: false, code: "timeout" });
-  assert.equal(signal?.aborted, true);
-  assert.deepEqual(await adapter(input), { ok: false, code: "usage_limit" });
-  finish(reply());
+  assert.deepEqual(await adapter(input), { ok: false, code: "timeout" });
+  assert.deepEqual(await adapter(input), { ok: false, code: "circuit_open" });
+  assert.equal(calls, 2);
 });
 
 test("caps usage at ten calls per minute and allows calls after window expiry", async () => {

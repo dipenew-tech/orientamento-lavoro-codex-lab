@@ -98,7 +98,7 @@ L'adapter e il suo test importano l'SDK Node; non devono essere importati dal fr
   disponibilità, qualità e prezzi devono essere rivalutati prima di una prova reale.
 - Timeout server: default 15 secondi, configurabile nel codice tra 1 e 30000 ms.
   Nessun parametro modello, chiave o timeout deve provenire dalla richiesta HTTP.
-- Creare una sola istanza per processo. Limite di una richiesta in corso e dieci
+- Creare una sola istanza per processo. Limite di una richiesta in attesa locale e dieci
   tentativi per finestra mobile di un minuto, senza retry automatici. Il limite è
   per istanza/processo, non distribuito né un tetto di spesa giornaliero. Ricreare
   l'adapter o riavviare il processo azzera i contatori.
@@ -116,12 +116,32 @@ esperienze, strutture, recapiti e offerte inventate, con consigli generici sugli
 
 Una risposta completata, non rifiutata e accettata dal validatore produce
 `{ ok: true, sections }`. Altrimenti ritorna soltanto `{ ok: false, code }`:
-`invalid_input`, `missing_key`, `invalid_config`, `usage_limit`, `timeout`,
+`invalid_input`, `missing_key`, `invalid_config`, `usage_limit`, `circuit_open`, `timeout`,
 `provider_error`, `invalid_response` o `refused`. Nessun errore del provider, prompt,
 chiave o corpo della risposta viene restituito o scritto nei log. Anche il logging
 SDK è disabilitato e l'endpoint SDK è fissato a quello ufficiale, senza override ambientali.
-La scadenza interrompe la richiesta; lo slot di concorrenza resta occupato finché
-la richiesta pendente non termina. Il futuro chiamante dovrà scegliere il fallback locale.
+La scadenza richiede l'interruzione tramite abort e restituisce `timeout`, liberando
+lo slot locale anche se la Promise sottostante non termina. Dopo il primo timeout
+è consentita una nuova richiesta esplicita (nessun retry automatico). Dopo il
+secondo timeout, anche se rilevato dall'SDK, l'istanza restituisce `circuit_open`
+senza ulteriori chiamate. Il budget di due timeout vale per tutta la vita
+dell'istanza: né la finestra di frequenza né risposte tardive lo azzerano. Il
+futuro chiamante dovrà scegliere il fallback locale per questi errori.
+
+Questo compromesso permette un solo recupero: al massimo due chiamate possono
+rimanere pendenti indefinitamente per timeout nella stessa istanza. Una risposta
+tardiva non cambia il risultato già restituito e non libera lo slot di una
+richiesta successiva. La Promise in ritardo conserva soltanto i gestori della
+gara, senza continuazioni che cambino lo stato dell'adapter.
+
+**Limiti di sicurezza:** abort non dimostra che il provider abbia interrotto il
+lavoro o la fatturazione. Perciò il circuito non si riapre automaticamente, nemmeno
+quando una Promise scaduta termina. Il limite riguarda l'accumulo dovuto a timeout,
+non certifica lo stato remoto dopo errori di rete o altri errori del provider.
+Ricreare l'istanza, riavviare il processo o usare più processi aggira il budget:
+non farlo automaticamente per recuperare il servizio. Prima di un ripristino
+operativo occorre valutare le richieste incerte e i limiti del progetto provider.
+Non è possibile ottenere dal solo client una garanzia globale di cancellazione.
 
 `store: false` non equivale a una garanzia di zero conservazione lato provider:
 prima dell'uso reale verificare le condizioni di trattamento dati applicabili.
@@ -143,7 +163,9 @@ nessuna chiamata OpenAI reale, chiave reale o costo. Il mock HTTP include
 `output_text` concatenando i contenuti `output_text` dei messaggi. Un mock che
 lo omette non riproduce la risposta Responses API e produce un risultato invalido.
 Sono coperti configurazione assente, minimizzazione, schema, risposta invalida,
-rifiuto, timeout SDK e applicativo, errori di rete, assenza di retry e limiti d'uso.
+rifiuto, timeout SDK e applicativo, Promise che ignorano abort indefinitamente,
+recupero limitato e circuito persistente, risposte/rifiuti tardivi, errori di rete,
+assenza di retry e limiti d'uso.
 Il controllo globale resta soggetto ai due errori TS2353 della baseline descritti sopra.
 
 Fonti ufficiali consultate:
