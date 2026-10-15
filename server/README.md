@@ -75,3 +75,80 @@ gli unici errori globali con i nuovi file. Il generatore non viene modificato.
 
 I test usano dati sintetici, importano soltanto il contratto e le librerie Node
 integrate: nessun server, timer, SMTP o chiamata esterna viene avviato.
+
+## Adapter backend (non collegato all'applicazione)
+
+`openaiLetterAdapter.ts` usa l'SDK ufficiale `openai@7.34.0`, aggiunto a
+`package.json` e `package-lock.json` con npm e script di installazione disabilitati.
+Per questo intervento usare npm e il relativo lockfile: `bun.lock` resta quello
+preesistente e non descrive ancora la nuova dipendenza. Gemini non è stato rimosso.
+L'SDK richiede Node >=22 (verificato qui su Node 24); il requisito Node >=18 del
+README generale non è sufficiente per il futuro uso dell'adapter. Verificare il
+runtime di deployment prima dell'attivazione. npm ha inoltre riallineato nel
+lockfile `nodemailer` e `@types/nodemailer`, già dichiarati nel package.json base
+ma mancanti dal lockfile: non sono nuove dipendenze funzionali dell'adapter.
+L'adapter e il suo test importano l'SDK Node; non devono essere importati dal frontend.
+
+### Configurazione esclusivamente server
+
+- `OPENAI_API_KEY`: opzionale, letta dall'ambiente alla creazione dell'adapter.
+  Se assente o vuota, ritorna `missing_key` senza creare il client.
+- `OPENAI_LETTER_MODEL`: opzionale, default `gpt-4.1-mini`; unico override ammesso
+  `gpt-4.1-mini-2025-04-14`. Modello scelto per testi brevi con output strutturato;
+  disponibilità, qualità e prezzi devono essere rivalutati prima di una prova reale.
+- Timeout server: default 15 secondi, configurabile nel codice tra 1 e 30000 ms.
+  Nessun parametro modello, chiave o timeout deve provenire dalla richiesta HTTP.
+- Creare una sola istanza per processo. Limite di una richiesta in corso e dieci
+  tentativi per finestra mobile di un minuto, senza retry automatici. Il limite è
+  per istanza/processo, non distribuito né un tetto di spesa giornaliero. Ricreare
+  l'adapter o riavviare il processo azzera i contatori.
+- Massimo 1600 token di output; nessun tool, streaming o conversazione persistente.
+  Timeout e rifiuto locale non garantiscono assenza di costi per lavoro già avviato.
+  Prima dell'attivazione servono anche controlli di accesso e budget a livello di progetto.
+
+### Richiesta e risultato
+
+Usa `responses.create` con `text.format`, schema JSON strict e `store: false`.
+L'input viene verificato a runtime: esattamente cinque campi, enum e booleani;
+nessun nome, nazionalità, zona, recapito o campo libero. Il payload è ricostruito
+esplicitamente. Le istruzioni vietano candidature, fatti personali, qualifiche,
+esperienze, strutture, recapiti e offerte inventate, con consigli generici sugli allegati.
+
+Una risposta completata, non rifiutata e accettata dal validatore produce
+`{ ok: true, sections }`. Altrimenti ritorna soltanto `{ ok: false, code }`:
+`invalid_input`, `missing_key`, `invalid_config`, `usage_limit`, `timeout`,
+`provider_error`, `invalid_response` o `refused`. Nessun errore del provider, prompt,
+chiave o corpo della risposta viene restituito o scritto nei log. Anche il logging
+SDK è disabilitato e l'endpoint SDK è fissato a quello ufficiale, senza override ambientali.
+La scadenza interrompe la richiesta; lo slot di concorrenza resta occupato finché
+la richiesta pendente non termina. Il futuro chiamante dovrà scegliere il fallback locale.
+
+`store: false` non equivale a una garanzia di zero conservazione lato provider:
+prima dell'uso reale verificare le condizioni di trattamento dati applicabili.
+L'adapter non certifica veridicità, lingua o assenza di tutte le forme di recapito:
+le euristiche e i limiti semantici del contratto restano validi. I filtri aggiuntivi
+della PR #3 sono una modifica separata e non vengono duplicati in questo branch.
+
+### Test offline dell'adapter e del contratto
+
+```sh
+node --import tsx --test --test-isolation=none --test-reporter=tap server/openaiLetterAdapter.test.ts server/openaiLetterContract.test.ts
+node_modules/.bin/tsc --noEmit --strict --target ES2022 --module ESNext --moduleResolution bundler --allowImportingTsExtensions --skipLibCheck server/openaiLetterAdapter.ts server/openaiLetterAdapter.test.ts server/openaiLetterContract.ts server/openaiLetterContract.test.ts
+node_modules/.bin/tsc --noEmit
+```
+
+I test includono il vero SDK con `fetch` sostituito da un trasporto simulato:
+nessuna chiamata OpenAI reale, chiave reale o costo. Il mock HTTP include
+`object: "response"`: l'SDK 7.34.0 usa questo discriminante per aggiungere
+`output_text` concatenando i contenuti `output_text` dei messaggi. Un mock che
+lo omette non riproduce la risposta Responses API e produce un risultato invalido.
+Sono coperti configurazione assente, minimizzazione, schema, risposta invalida,
+rifiuto, timeout SDK e applicativo, errori di rete, assenza di retry e limiti d'uso.
+Il controllo globale resta soggetto ai due errori TS2353 della baseline descritti sopra.
+
+Fonti ufficiali consultate:
+- https://developers.openai.com/api/docs/guides/structured-outputs
+- https://developers.openai.com/api/docs/models/gpt-4.1-mini
+- https://github.com/openai/openai-node
+- Sorgenti installati `openai/src/resources/responses/responses.ts` (`create`) e
+  `openai/src/lib/ResponsesParser.ts` (`addOutputText`).
