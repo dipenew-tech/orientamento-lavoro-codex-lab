@@ -103,6 +103,23 @@ test("accepts ordinary prose and short numeric advice", () => {
   assert.equal(validateOpenAILetterSections({ ...sample, intro: "Dedica 2 ore alla ricerca e consulta gli annunci ogni 1-2 giorni, con un obiettivo chiaro." }, input).valid, true);
 });
 
+test("accepts course advice without treating it as a street address", () => {
+  for (const course of ["corso di italiano per 2 ore", "corso in presenza per 3 giorni", "corso per principianti di 4 settimane"]) {
+    assert.equal(validateOpenAILetterSections({ ...sample, schoolsIntro: `Puoi frequentare un ${course} e praticare la lingua con regolarità.` }, input).valid, true, course);
+  }
+  for (const address of ["Corso Esempio 12", "Corso di Francia 12"]) {
+    assert.equal(validateOpenAILetterSections({ ...sample, intro: `${sample.intro} ${address}` }, input).valid, false);
+  }
+});
+
+test("rejects bare domains with suffixes outside the original list", () => {
+  for (const domain of ["example.dev", "example.jobs", "example.co.uk", "sub.example.museum", "example.xn--p1ai"]) {
+    for (const key of Object.keys(sample)) {
+      assert.equal(validateOpenAILetterSections({ ...sample, [key]: `${sample[key as keyof OpenAILetterSections]} Consulta ${domain}.` }, input).valid, false, domain);
+    }
+  }
+});
+
 test("parses JSON with a byte limit and rejects malformed or fenced output", () => {
   assert.equal(parseOpenAILetterSections(JSON.stringify(sample), input).valid, true);
   for (const json of ["{", "null", "[]", `\`\`\`json\n${JSON.stringify(sample)}\n\`\`\``, " ".repeat(MAX_OUTPUT_BYTES + 1), "é".repeat(MAX_OUTPUT_BYTES / 2 + 1)]) {
