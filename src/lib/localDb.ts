@@ -758,7 +758,7 @@ function extractNeighborhoodKeywords(zoneJob: string, zoneRes: string): string[]
   return keywords;
 }
 
-// 100% VERIFIED REAL COOPERATIVES, SOCIAL ENTERPRISES & EMPLOYMENT AGENCIES
+// Repertorio storico: verificare indirizzi, orari e recapiti presso le fonti ufficiali.
 export const localDb: Record<string, LocalCooperative[]> = {
   "Badante (assistenza anziani)": [
     {
@@ -1845,12 +1845,12 @@ function getCooperativeEmail(name: string): string {
       return v;
     }
   }
-  return "info@cooperativa.roma.it";
+  return ""; // Non inventare recapiti email mancanti
 }
 
 export function queryLocalDb(jobSought: string, zoneResident: string, zoneJobSought: string): LocalCooperative[] {
-  let normalizedKey = "Badante (assistenza anziani)";
-  const js = jobSought.toLowerCase();
+  let normalizedKey = "";
+  const js = normalizeSearchText(jobSought);
 
   if (js.includes("badante") || js.includes("assistenza anziani")) {
     normalizedKey = "Badante (assistenza anziani)";
@@ -1877,13 +1877,13 @@ export function queryLocalDb(jobSought: string, zoneResident: string, zoneJobSou
   } else if (js.includes("autist") || js.includes("conduc") || js.includes("guid") || js.includes("driver") || js.includes("fattorin") || js.includes("patente")) {
     normalizedKey = "Autista (conducente/fattorino)";
   } else {
-    const foundKey = Object.keys(localDb).find(k => k.toLowerCase().includes(js) || js.includes(k.toLowerCase()));
+    const foundKey = Object.keys(localDb).find(k => normalizeSearchText(k).includes(js) || js.includes(normalizeSearchText(k)));
     if (foundKey) {
       normalizedKey = foundKey;
     }
   }
 
-  const baseList = localDb[normalizedKey] || localDb["Badante (assistenza anziani)"];
+  const baseList = localDb[normalizedKey] || [];
 
   const residentMun = getMunicipioFromZone(zoneResident);
   const jobMun = getMunicipioFromZone(zoneJobSought);
@@ -1926,7 +1926,7 @@ export function queryLocalDb(jobSought: string, zoneResident: string, zoneJobSou
   const seenNames = new Set<string>();
 
   for (const item of combined) {
-    const key = item.name.toLowerCase().trim();
+    const key = `${normalizeSearchText(item.name)}|${normalizeSearchText(item.address)}`;
     if (!seenNames.has(key)) {
       seenNames.add(key);
       uniqueList.push(item);
@@ -1952,8 +1952,21 @@ export interface DatabaseSearchResult {
   profession?: string;
 }
 
+
+// Ricerca tollerante ad accenti, apostrofi e spazi.
+export function normalizeSearchText(value: string): string {
+  return String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase().replace(/[’']/g, " ").replace(/[^a-z0-9]+/g, " ").trim()
+    .replace(/\s+/g, " ");
+}
+function matchesSearch(text: string, query: string): boolean {
+  const tokens = normalizeSearchText(query).split(" ").filter(Boolean);
+  const searchable = normalizeSearchText(text);
+  return tokens.every(token => searchable.includes(token));
+}
+
 export function searchLocalDatabase(query: string, filterCategory?: string, filterMunicipio?: string): DatabaseSearchResult[] {
-  const q = (query || "").toLowerCase().trim();
+  const q = normalizeSearchText(query || "");
   const results: DatabaseSearchResult[] = [];
 
   // 1. Search Public Offices
@@ -1962,13 +1975,13 @@ export function searchLocalDatabase(query: string, filterCategory?: string, filt
       if (filterMunicipio && filterMunicipio !== "all" && mun !== filterMunicipio) continue;
       for (const off of offices) {
         const fullText = `${off.name} ${off.address} ${off.phone} ${off.email || ""} ${off.description} ${mun}`.toLowerCase();
-        if (!q || fullText.includes(q)) {
+        if (!q || matchesSearch(fullText, q)) {
           results.push({
             category: "Ufficio Pubblico",
             name: off.name,
             address: off.address,
             phone: off.phone,
-            email: off.email || "info@regione.lazio.it",
+            email: off.email || "",
             hours: off.hours,
             description: off.description,
             municipio: off.municipio || mun
@@ -1984,13 +1997,13 @@ export function searchLocalDatabase(query: string, filterCategory?: string, filt
       if (filterMunicipio && filterMunicipio !== "all" && mun !== filterMunicipio) continue;
       for (const sch of schools) {
         const fullText = `${sch.name} ${sch.address} ${sch.phone} ${sch.email || ""} ${sch.description} ${mun}`.toLowerCase();
-        if (!q || fullText.includes(q)) {
+        if (!q || matchesSearch(fullText, q)) {
           results.push({
             category: "Scuola Italiano",
             name: sch.name,
             address: sch.address,
             phone: sch.phone,
-            email: sch.email || "scuola@istruzione.it",
+            email: sch.email || "",
             hours: sch.hours,
             description: sch.description,
             municipio: sch.municipio || mun
@@ -2007,9 +2020,9 @@ export function searchLocalDatabase(query: string, filterCategory?: string, filt
         if (filterMunicipio && filterMunicipio !== "all" && coop.municipio !== filterMunicipio) continue;
         const email = coop.email || getCooperativeEmail(coop.name);
         const fullText = `${coop.name} ${coop.address} ${coop.phone} ${email} ${coop.description} ${coop.municipio || ""} ${prof}`.toLowerCase();
-        if (!q || fullText.includes(q)) {
+        if (!q || matchesSearch(fullText, q)) {
           // Avoid duplicate display across professions if searching globally
-          const exists = results.some(r => r.name === coop.name && r.address === coop.address);
+          const exists = results.some(r => normalizeSearchText(r.name) === normalizeSearchText(coop.name) && normalizeSearchText(r.address) === normalizeSearchText(coop.address));
           if (!exists) {
             results.push({
               category: "Cooperativa / Agenzia",
