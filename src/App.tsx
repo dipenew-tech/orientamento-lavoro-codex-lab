@@ -266,9 +266,9 @@ export default function App() {
   // Loading state messages cycle
   const [loadingMsgIndex, setLoadingMsgIndex] = useState(0);
   const loadingMessages = [
-    "Collegamento in corso con la banca dati e servizi territoriali locali...",
-    "Ricerca delle 10 cooperative reali più attive nel settore richiesto...",
-    "Localizzazione del Centro per l'Impiego e Centro Orientamento Lavoro (COL) più vicino...",
+    "Consultazione del repertorio territoriale...",
+    "Selezione dei servizi pertinenti alla professione...",
+    "Preparazione dei riferimenti territoriali disponibili...",
     "Selezione delle scuole di italiano gratuite per stranieri...",
     "Scrittura della lettera di accoglienza e di orientamento personalizzata...",
     "Traduzione automatica del testo per agevolare la persona nel suo percorso..."
@@ -450,11 +450,11 @@ export default function App() {
               title="Cerca e verifica uffici, indirizzi e telefoni"
             >
               <Search className="w-3.5 h-3.5 text-amber-600" />
-              Verifica Database & Cerca
+              Cerca servizi
             </button>
             <div className="flex items-center gap-2 text-xs bg-black/5 dark:bg-white/10 px-3 py-1.5 rounded-full font-medium">
               <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-              Sportello Attivo
+              Consultazione libera
             </div>
           </div>
         </div>
@@ -476,7 +476,7 @@ export default function App() {
                 </h2>
               </div>
               <p className="text-xs sm:text-sm opacity-90 leading-relaxed">
-                Questo strumento aiuta i volontari nell'orientamento al lavoro a Roma. Compilando i campi di seguito, verrà generata una <strong>lettera Word (.docx) personalizzata</strong> con indirizzi , numeri di telefono ed orari dei servizi territoriali (CPI, COL, Scuole di Italiano e Cooperative sociali), tradotta anche nella lingua dell'utente.
+                Compila i dati essenziali, scegli professione e zona e genera una <strong>scheda Word di orientamento</strong>. Controlla recapiti, indirizzi e orari prima di consegnarla: il repertorio non è verificato in tempo reale.
               </p>
             </div>
 
@@ -491,11 +491,11 @@ export default function App() {
                     <div className="space-y-3">
                       <h3 className={`text-xs font-bold uppercase tracking-wider border-b pb-1.5 flex items-center gap-1.5 ${t.sectionTitleColor}`}>
                         <User className="w-4 h-4" />
-                        1. Informazioni Personali
+                        1. Persona
                       </h3>
                       
                       <div>
-                        <label className={`block text-xs mb-1 ${t.labelColor}`}>Nome dell'utente (opzionale)</label>
+                        <label className={`block text-xs mb-1 ${t.labelColor}`}>Nome (facoltativo)</label>
                         <input
                           type="text"
                           placeholder="Es: Ahmed, Maria, ..."
