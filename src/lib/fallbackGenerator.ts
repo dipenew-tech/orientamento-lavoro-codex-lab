@@ -12,19 +12,6 @@ const translations: Record<string, {
   conclusion: string;
 }> = {
   english: {
-    "Fondazione Roma Litorale": "Roma Litorale Foundation",
-    "Fondazione Roma Litorale - Agenzia Lavoro": "Roma Litorale Foundation - Employment Agency",
-    "Fondazione Roma Litorale - Agenzia Lavoro Ostia": "Roma Litorale Foundation - Ostia Employment Agency",
-    "Cooperativa Sociale Futura Onlus": "Futura Onlus Social Cooperative",
-    "Assistenza e Territorio - Soc. Coop. Sociale Onlus": "Assistenza e Territorio Social Cooperative",
-    "PrivatAssistenza Ostia Lido": "PrivatAssistenza Ostia Lido",
-    "Cooperativa Lido": "Lido Cooperative",
-    "Studio Eurogiga (Servizi e Payroll Ostia)": "Studio Eurogiga (Ostia Payroll & Services)",
-    "Adecco Filiale Fiumicino": "Adecco Fiumicino Branch",
-    "Randstad Italia - Filiale Roma EUR": "Randstad Italy - Rome EUR Branch",
-    "CPIA 7 Sede Ostia 1 (Levante)": "CPIA 7 Ostia 1 Center (East)",
-    "CPIA 7 Sede Ostia 2 (Ponente)": "CPIA 7 Ostia 2 Center (West)",
-    "Corsi di Italiano Biblioteca Elsa Morante": "Elsa Morante Library Italian Courses",
     language: "Inglese",
     greeting: "Dear ${recipientName},",
     intro: "we are pleased that you have turned to us for help in your job search. We seek to help you find opportunities suitable for you and, to do this, we would like — in a spirit of friendship — to give you some suggestions.\n\nFirst of all, consider that SEARCHING FOR A JOB IS A JOB IN ITSELF: that is, the search must be done with commitment, respecting certain hours that you set yourself (for example, 2 hours a day), consulting and searching independently all job offer points, websites, apps, agencies, etc. We are available to give you advice and direct you, but the search must be done by yourself, also because personal data is requested for registration. We will do together:",
@@ -70,19 +57,6 @@ const translations: Record<string, {
     conclusion: "Pendant votre recherche d'emploi, notre centre d'orientation reste à votre disposition. Bon courage dans votre recherche d'emploi !"
   },
   arabic: {
-    "Fondazione Roma Litorale": "مؤسسة روما ليتورالي",
-    "Fondazione Roma Litorale - Agenzia Lavoro": "مؤسسة روما ليتورالي - وكالة التوظيف",
-    "Fondazione Roma Litorale - Agenzia Lavoro Ostia": "مؤسسة روما ليتورالي - وكالة توظيف أوستيا",
-    "Cooperativa Sociale Futura Onlus": "التعاونية الاجتماعية فوتورا",
-    "Assistenza e Territorio - Soc. Coop. Sociale Onlus": "التعاونية الاجتماعية المساعدة والإقليم",
-    "PrivatAssistenza Ostia Lido": "بريفات أسيستنزا أوستيا ليدو",
-    "Cooperativa Lido": "تعاونية ليدو",
-    "Studio Eurogiga (Servizi e Payroll Ostia)": "استوديو يوروجيجا (خدمات أوستيا)",
-    "Adecco Filiale Fiumicino": "أديكو - فرع فيوميتشينو",
-    "Randstad Italia - Filiale Roma EUR": "رانستاد إيطاليا - فرع روما يور",
-    "CPIA 7 Sede Ostia 1 (Levante)": "CPIA 7 مركز أوستيا 1",
-    "CPIA 7 Sede Ostia 2 (Ponente)": "CPIA 7 مركز أوستيا 2",
-    "Corsi di Italiano Biblioteca Elsa Morante": "دورات اللغة الإيطالية بمكتبة إلسا مورانتي",
     language: "Arabo",
     greeting: "عزيزي/عزيزتي ${recipientName}،",
     intro: "يسعدنا تواصلك معنا لطلب المساعدة في البحث عن عمل. نحن نحاول مساعدتك في إيجاد الفرص المناسبة لك، وللقيام بذلك نود — بروح الصداقة — تقديم بعض المقترحات لك.\n\nأولاً وقبل كل شيء، ضع في اعتبارك أن البحث عن عمل هو عمل في حد ذاته: أي أن البحث يجب أن يتم بانتظام، مع الالتزام بساعات معينة تحددها بنفسك (على سبيل المثال، ساعتان يوميًا)، والبحث بشكل مستقل في جميع مواقع الوظائف والتطبيقات والوكالات. نحن متاحون لتقديم النصيحة والتوجيه، ولكن يجب أن تقوم بالبحث بنفسك. سنقوم معًا بـ:",
@@ -239,6 +213,19 @@ const translations: Record<string, {
 
 const annexDict: Record<string, Record<string, string>> = {
   english: {
+    "Fondazione Roma Litorale": "Roma Litorale Foundation",
+    "Fondazione Roma Litorale - Agenzia Lavoro": "Roma Litorale Foundation - Employment Agency",
+    "Fondazione Roma Litorale - Agenzia Lavoro Ostia": "Roma Litorale Foundation - Ostia Employment Agency",
+    "Cooperativa Sociale Futura Onlus": "Futura Onlus Social Cooperative",
+    "Assistenza e Territorio - Soc. Coop. Sociale Onlus": "Assistenza e Territorio Social Cooperative",
+    "PrivatAssistenza Ostia Lido": "PrivatAssistenza Ostia Lido",
+    "Cooperativa Lido": "Lido Cooperative",
+    "Studio Eurogiga (Servizi e Payroll Ostia)": "Studio Eurogiga (Ostia Payroll & Services)",
+    "Adecco Filiale Fiumicino": "Adecco Fiumicino Branch",
+    "Randstad Italia - Filiale Roma EUR": "Randstad Italy - Rome EUR Branch",
+    "CPIA 7 Sede Ostia 1 (Levante)": "CPIA 7 Ostia 1 Center (East)",
+    "CPIA 7 Sede Ostia 2 (Ponente)": "CPIA 7 Ostia 2 Center (West)",
+    "Corsi di Italiano Biblioteca Elsa Morante": "Elsa Morante Library Italian Courses",
     "Centro per l'Impiego": "Employment Center",
     "Centro Orientamento Lavoro": "Job Orientation Center",
     "Centro per l'Impiego (CPI) di Ostia": "Ostia Employment Center (CPI)",
@@ -375,6 +362,19 @@ const annexDict: Record<string, Record<string, string>> = {
     "Cooperativa sociale operante ad Ostia da decenni nell'ambito dell'assistenza, sanità e servizi educativi locali.": "Spółdzielnia socjalna działająca w Ostii od dziesięcioleci w obszarze opieki, zdrowia i lokalnych usług edukacyjnych."
   },
   arabic: {
+    "Fondazione Roma Litorale": "مؤسسة روما ليتورالي",
+    "Fondazione Roma Litorale - Agenzia Lavoro": "مؤسسة روما ليتورالي - وكالة التوظيف",
+    "Fondazione Roma Litorale - Agenzia Lavoro Ostia": "مؤسسة روما ليتورالي - وكالة توظيف أوستيا",
+    "Cooperativa Sociale Futura Onlus": "التعاونية الاجتماعية فوتورا",
+    "Assistenza e Territorio - Soc. Coop. Sociale Onlus": "التعاونية الاجتماعية المساعدة والإقليم",
+    "PrivatAssistenza Ostia Lido": "بريفات أسيستنزا أوستيا ليدو",
+    "Cooperativa Lido": "تعاونية ليدو",
+    "Studio Eurogiga (Servizi e Payroll Ostia)": "استوديو يوروجيجا (خدمات أوستيا)",
+    "Adecco Filiale Fiumicino": "أديكو - فرع فيوميتشينو",
+    "Randstad Italia - Filiale Roma EUR": "رانستاد إيطاليا - فرع روما يور",
+    "CPIA 7 Sede Ostia 1 (Levante)": "CPIA 7 مركز أوستيا 1",
+    "CPIA 7 Sede Ostia 2 (Ponente)": "CPIA 7 مركز أوستيا 2",
+    "Corsi di Italiano Biblioteca Elsa Morante": "دورات اللغة الإيطالية بمكتبة إلسا مورانتي",
     "Centro per l'Impiego": "مركز التوظيف",
     "Centro Orientamento Lavoro": "مركز التوجيه المهني",
     "Centro per l'Impiego (CPI) di Ostia": "مركز التوظيف (CPI) في أوستيا",
@@ -483,7 +483,7 @@ export function generateLocalFallback(inputs: {
 \nAnzitutto considera che CERCARE LAVORO È UN LAVORO: cioè la ricerca va fatta con impegno, rispettando certi orari che stabilisci da ${isFemale ? "sola" : "solo"} (ad es. 2 ore al giorno), consultando e cercando in maniera autonoma tutti i punti di offerta lavoro, i siti internet, le app, le agenzie, ecc. Noi siamo disponibili a darti consigli e indirizzarti ma la ricerca va fatta da ${isFemale ? "sola" : "solo"} anche perché vengono chiesti dati personali per la registrazione. Noi faremo insieme:`;
 
   let cooperativesIntro = `1. CURRICULUM: serve per elencare le tue esperienze di lavoro, per indicare il lavoro da te desiderato, e capire dove impegnarti al meglio nella ricerca. Il curriculum va aggiornato il più possibile. Nel curriculum elencheremo anche i tuoi punti di forza e capire se vuoi impegnarti anche in altre aree diverse da quelle seguite finora.
-\n2. RICERCA DEL LAVORO: noi ti suggeriamo alcuni siti Internet o App dove dovrai iscriverti, allegando il tuo Curriculum e fornendo altre informazioni. Devi consultare spesso questi siti (ogni 1-2 giorni) perché le offerte volano subito via se non rispondi. Inoltre, puoi visitare o telefonare ad agenzie di lavoro, cooperative, ecc. (di cui ti daremo qualche riferimento, ma devi essere tu a contattarli e prendere appuntamento). In allegato trovi l'elenco di 10 indirizzi a Roma dove puoi andare e lasciare il tuo curriculum; sono specializzate nella ricerca di persone che fanno il lavoro che desideri.`;
+\n2. RICERCA DEL LAVORO: noi ti suggeriamo alcuni siti Internet o App dove dovrai iscriverti, allegando il tuo Curriculum e fornendo altre informazioni. Devi consultare spesso questi siti (ogni 1-2 giorni) perché le offerte volano subito via se non rispondi. Inoltre, puoi visitare o telefonare ad agenzie di lavoro, cooperative, ecc. (di cui ti daremo qualche riferimento, ma devi essere tu a contattarli e prendere appuntamento). In allegato trovi i riferimenti disponibili: prima di inviare il curriculum verifica con ciascun ente le posizioni aperte, i requisiti e il canale di candidatura.`;
 
   let publicOfficesIntro = `3. ISCRIZIONE AL CENTRO IMPIEGO: verifica di essere correttamente ${isFemale ? "iscritta" : "iscritto"} al Centro Impiego (${cpiDetails}) oppure altro Centro Impiego di Roma. Se non lo hai ancora fatto, è la prima cosa che devi fare. Se ti serve una mano nella compilazione dei moduli ti aiutiamo noi.
 \n4. ALTRI UFFICI COMUNALI: ti suggeriamo anche andare al COL Centro Orientamento Lavoro di ${colDetails} e a Portafuturo di Via Galvani 108 (vicino alla Metro Piramide); sono altri uffici comunali che ti possono aiutare a cercare lavoro.
@@ -673,7 +673,7 @@ export function generateLocalFallback(inputs: {
     translatedLetter = {
       greeting: formattedGreeting,
       intro: finalIntro,
-      cooperativesIntro: finalCoopsIntro,
+      cooperativesIntro: finalCoopsIntro.replace(/\b10\b/g, String(selectedCoops.length)),
       publicOfficesIntro: finalPublicIntro,
       schoolsIntro: needsSchools ? dict.schoolsIntro : undefined,
       conclusion: dict.conclusion
