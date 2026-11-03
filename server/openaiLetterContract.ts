@@ -51,9 +51,11 @@ const KEYS = ["intro", "cooperativesIntro", "schoolsIntro", "conclusion"] as con
 const MARKUP = /<[^>]*>|[<>`*]|_{2,}|~{2,}|!?\[[^\]]*\]\s*(?:\([^)]*\)|\[[^\]]*\])|^\s{0,3}(?:#{1,6}(?:\s|$)|>|[-+]\s|\d+[.)]\s)|^\s*(?:-{3,}|={3,}|\|.*\|)\s*$|\[[^\]]+\]:\s*\S+/m;
 const EMPHASIS = /(?:^|\s)_[^\n]+?_(?=\s|[.,;:!?]|$)/;
 const EMAIL = /[^\s@]+@[^\s@]+/;
-const URL = /(?:[a-z][a-z0-9+.-]*:\/\/|www\.|\b[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9-]+)*\.(?:it|com|org|net|eu|io|gov|edu)\b)/i;
+// Recognize ASCII domain-shaped text without a fixed list of suffixes.
+const URL = /(?:[a-z][a-z0-9+.-]*:\/\/|www\.|\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+(?:[a-z]{2,63}|xn--[a-z0-9-]{2,59})\b)/i;
 const PHONE = /(?:\+?\d[\s()./-]*){7,}/;
-const ADDRESS = /\b(?:via|viale|vicolo|piazza|piazzale|corso|largo|street|road|avenue)\s+[^\n,;]{0,60}?\b\d+[a-z]?\b|\b\d+\s+[^\n,;]{1,60}\b(?:street|road|avenue)\b|\b\d{5}\b/i;
+// Exclude ordinary course advice while retaining numbered street addresses.
+const ADDRESS = /\b(?:via|viale|vicolo|piazza|piazzale|corso(?!\s+(?:di\s+italiano|in\s+presenza|per\s+principianti)\b)|largo|street|road|avenue)\s+[^\n,;]{0,60}?\b\d+[a-z]?\b|\b\d+\s+[^\n,;]{1,60}\b(?:street|road|avenue)\b|\b\d{5}\b/i;
 const CONTROL_CHARACTERS = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
 
 function invalid(reason: string): LetterValidationResult {

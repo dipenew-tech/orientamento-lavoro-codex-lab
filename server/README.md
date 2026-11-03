@@ -60,7 +60,7 @@ node_modules/.bin/tsc --noEmit
 ```
 
 Il comando Node evita il socket IPC del CLI `tsx`, bloccato nella sandbox, e
-mostra tutti gli undici test (richiede una versione Node con `--test-isolation`).
+mostra tutti i test (richiede una versione Node con `--test-isolation`).
 Per controllare separatamente i nuovi file, anche in modalità strict:
 
 ```sh
