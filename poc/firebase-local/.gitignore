@@ -1,0 +1,10 @@
+node_modules/
+.local-cache/
+.local-dist/
+.local-state/
+.local-test-state/
+.local-exports/
+*-debug.log
+*-debug.*.log
+ui-debug.log
+.env*
