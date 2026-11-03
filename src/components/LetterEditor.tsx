@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { GeneratedLetter, Cooperative, PublicOffice, ItalianSchool } from "../types";
 import { generateWordDocument, getUsefulSitesAndApps } from "../lib/wordGenerator";
-import { saveCustomCooperative, saveCustomPublicOffice, saveCustomItalianSchool, getMunicipioFromZone } from "../lib/localDb";
+import { saveCustomCooperative, saveCustomPublicOffice, saveCustomItalianSchool, getMunicipioFromZone, municipioOffices, municipioSchools, queryLocalDb } from "../lib/localDb";
 import { Download, RefreshCw, Plus, Trash2, Globe, Heart, Eye, FileText, Check, Search, Building2, MapPin, AlertCircle, Loader2, Phone, ExternalLink, Database, X } from "lucide-react";
 
 function getLabel(key: "Address" | "Phone" | "Hours" | "Annex" | "ContactDetails" | "A" | "B" | "C", lang: string): string {
@@ -362,25 +362,21 @@ export default function LetterEditor({ initialLetter, onReset }: LetterEditorPro
         jobSought = "giardiniere";
       }
 
-      console.log(`Executing Municipio Search for: ${jobSought}`);
-      const res = await fetch("/api/search-by-municipio", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ jobSought })
+      // Ricerca interamente locale per i 15 municipi di Roma.
+      const numerals = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII", "XIII", "XIV", "XV"];
+      const municipi = numerals.map(n => {
+        const municipio = `Municipio ${n}`;
+        return {
+          municipio,
+          offices: municipioOffices[municipio] || [],
+          schools: municipioSchools[municipio] || [],
+          cooperatives: queryLocalDb(jobSought, municipio, municipio)
+        };
       });
-
-      if (!res.ok) {
-        throw new Error("Errore durante la connessione al server.");
-      }
-
-      const data = await res.json();
-      if (data.error) {
-        throw new Error(data.error);
-      }
 
       setLetter(prev => ({
         ...prev,
-        municipiResults: data.municipi
+        municipiResults: municipi
       }));
     } catch (err: any) {
       console.error("Error in Municipio Search:", err);
