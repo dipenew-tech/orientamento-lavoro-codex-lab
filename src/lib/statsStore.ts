@@ -176,15 +176,7 @@ export function saveLetterStat(data: Omit<LetterStatRecord, "id" | "timestamp">)
     console.error("Error saving stat record to localStorage:", err);
   }
 
-  // Also send async log to server for centralized storage
-  fetch("/api/admin/log-letter", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(newRecord)
-  }).catch((err) => {
-    console.warn("Could not log stat record to server:", err);
-  });
-
+  // Le statistiche rimangono esclusivamente in questo browser.
   return newRecord;
 }
 
@@ -194,7 +186,6 @@ export function clearLetterStats(): void {
   } catch (err) {
     console.error("Error clearing stats:", err);
   }
-  fetch("/api/admin/clear-stats", { method: "POST" }).catch(() => {});
 }
 
 export interface AggregatedStats {
