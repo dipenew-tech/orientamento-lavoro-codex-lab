@@ -1,7 +1,7 @@
 import { LetterStatRecord } from "../types";
 export type { LetterStatRecord };
 
-const STATS_STORAGE_KEY = "orientamento_lavoro_letter_stats_v1";
+const STATS_STORAGE_KEY = "orientamento_lavoro_letter_stats_web_v2";
 
 // Sample initial stats to show realistic metrics immediately if clean
 const INITIAL_SAMPLE_STATS: LetterStatRecord[] = [
@@ -147,17 +147,17 @@ export function getLetterStats(): LetterStatRecord[] {
   try {
     const raw = localStorage.getItem(STATS_STORAGE_KEY);
     if (!raw) {
-      localStorage.setItem(STATS_STORAGE_KEY, JSON.stringify(INITIAL_SAMPLE_STATS));
-      return INITIAL_SAMPLE_STATS;
+      localStorage.setItem(STATS_STORAGE_KEY, JSON.stringify([]));
+      return [];
     }
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed) && parsed.length > 0) {
       return parsed;
     }
-    return INITIAL_SAMPLE_STATS;
+    return [];
   } catch (err) {
     console.error("Error reading stats from localStorage:", err);
-    return INITIAL_SAMPLE_STATS;
+    return [];
   }
 }
 
