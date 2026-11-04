@@ -54,7 +54,7 @@ export default function NewEntryLookup({ category, value, existingValues = [] }:
       const response = await fetch(`https://www.wikidata.org/w/api.php?${params}`, {credentials:"omit"});
       if (!response.ok) throw new Error("Servizio non disponibile");
       const data = await response.json() as {search?:{id:string;label:string;description?:string}[]};
-      const items = (data.search || []).filter(item => /^Q\\d+$/.test(item.id)).map(item => ({label:item.label,description:item.description || "Descrizione non disponibile",url:`https://www.wikidata.org/wiki/${item.id}`}));
+      const items = (data.search || []).filter(item => /^Q\d+$/.test(item.id)).map(item => ({label:item.label,description:item.description || "Descrizione non disponibile",url:`https://www.wikidata.org/wiki/${item.id}`}));
       setWebResults(items);
       if (!items.length) setWebError("Nessun risultato trovato nella fonte consultata.");
     } catch { setWebError("Ricerca web non disponibile. Usa le corrispondenze locali oppure riprova."); }
