@@ -17,4 +17,10 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run build
-      - run: npm test --if-present
+      - run: npm test
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cloudflare-pages-dist
+          path: dist/
+          if-no-files-found: error
+          retention-days: 7
