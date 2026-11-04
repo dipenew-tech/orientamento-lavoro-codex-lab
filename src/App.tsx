@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { UserFormInputs, GeneratedLetter } from "./types";
 import LetterEditor from "./components/LetterEditor";
+import NewEntryLookup from "./components/NewEntryLookup";
 import AdminStatsModal from "./components/AdminStatsModal";
 import { saveLetterStat } from "./lib/statsStore";
 import { generateLocalFallback } from "./lib/fallbackGenerator";
@@ -541,6 +542,7 @@ export default function App() {
                             }}
                             className={`w-full px-3 py-2 ${t.inputBg} border ${t.inputBorder} ${t.inputFocus} rounded-xl focus:outline-none text-xs font-medium`}
                           />
+<NewEntryLookup category="nazionalita" value={customNationality} existingValues={NATIONALITIES_LIST} />
                         </div>
                       )}
 
@@ -623,6 +625,7 @@ export default function App() {
                             }}
                             className={`w-full px-3 py-2 ${t.inputBg} border ${t.inputBorder} ${t.inputFocus} rounded-xl focus:outline-none text-xs font-medium`}
                           />
+<NewEntryLookup category="mestiere" value={customJob} existingValues={["Badante (assistenza anziani)", "Colf/pulizie (servizi domestici)", "Facchino/magazziniere", "Lavapiatti/aiuto cucina", "Pizzaiolo", "Cuoco", "Muratore/Operaio edile", "Custode/portiere", "Cameriere/barista", "Giardiniere", "Segreteria (assistenza d’ufficio/reception)", "Autista (conducente/fattorino)"]} />
                         </div>
                       )}
 
@@ -665,6 +668,7 @@ export default function App() {
                           onChange={(e) => handleInputChange("zoneResident", e.target.value)}
                           className={`w-full px-3 py-2 ${t.inputBg} border ${t.inputBorder} ${t.inputFocus} rounded-xl focus:outline-none text-xs font-medium`}
                         />
+<NewEntryLookup category="quartiere" value={formData.zoneResident} />
                         <p className="text-[10px] opacity-60 mt-0.5">Identifica CPI e Scuole di Italiano più vicine.</p>
                       </div>
 
