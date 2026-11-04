@@ -2,6 +2,8 @@ name: Web autonoma CI
 on:
   push:
     branches: [feature/web-autonoma-gratuita]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 jobs:
   build:
