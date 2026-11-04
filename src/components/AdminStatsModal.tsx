@@ -131,28 +131,6 @@ export default function AdminStatsModal({ isOpen, onClose, accentBtnClass }: Adm
   const dateFilteredRecords = getDateFilteredRecords();
   const agg = computeAggregatedStats(dateFilteredRecords);
 
-  const handleSendEmailReport = async () => {
-    setIsSendingEmail(true);
-    setEmailStatus(null);
-    try {
-      const res = await fetch("/api/admin/send-stats-email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ records: dateFilteredRecords })
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setEmailStatus({ success: true, message: data.message || "Report statistico inviato con successo a dipenew@gmail.com!" });
-      } else {
-        setEmailStatus({ success: false, message: data.message || "Impossibile inviare l'email. Verifica le credenziali SMTP." });
-      }
-    } catch (err: any) {
-      setEmailStatus({ success: false, message: "Errore di connessione durante l'invio dell'email." });
-    } finally {
-      setIsSendingEmail(false);
-    }
-  };
-
   const handleClear = () => {
     clearLetterStats();
     setStatsRecords([]);
@@ -291,20 +269,6 @@ export default function AdminStatsModal({ isOpen, onClose, accentBtnClass }: Adm
 
               {/* Action Buttons */}
               <div className="flex flex-wrap items-center gap-2">
-                <button
-                  onClick={handleSendEmailReport}
-                  disabled={isSendingEmail || dateFilteredRecords.length === 0}
-                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 shadow-xs disabled:opacity-50"
-                  title="Invia report aggiornato del periodo a dipenew@gmail.com"
-                >
-                  {isSendingEmail ? (
-                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                  ) : (
-                    <Mail className="w-3.5 h-3.5" />
-                  )}
-                  Invia Report a dipenew@gmail.com
-                </button>
-
                 <div className="flex items-center gap-1">
                   <button
                     onClick={() => exportStatsCSV(dateFilteredRecords)}
@@ -324,15 +288,6 @@ export default function AdminStatsModal({ isOpen, onClose, accentBtnClass }: Adm
                     <FileCode className="w-3.5 h-3.5 text-indigo-500" />
                     JSON
                   </button>
-                  <a
-                    href="/api/download-zip"
-                    download="orientamento-lavoro-roma.zip"
-                    className="px-2.5 py-1.5 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/60 rounded-xl text-xs font-semibold transition-all flex items-center gap-1 shadow-xs"
-                    title="Scarica il backup completo dell'applicazione (codice React, server Express, database verificato) in formato ZIP"
-                  >
-                    <Download className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                    ZIP App
-                  </a>
                 </div>
 
                 <button

@@ -1,0 +1,26 @@
+name: Web autonoma CI
+on:
+  push:
+    branches: [feature/web-autonoma-gratuita]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+      - run: npm test
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cloudflare-pages-dist
+          path: dist/
+          if-no-files-found: error
+          retention-days: 7

@@ -353,21 +353,8 @@ export default function App() {
         jobSought: job
       };
 
-      console.log("Requesting letter generation from server...");
-      const response = await fetch("/api/generate-letter", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(payload)
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Impossibile generare la lettera online.");
-      }
-
-      const data: GeneratedLetter = await response.json();
+      // Generazione locale: nessuna chiamata API e nessun dato inviato a server.
+      const data: GeneratedLetter = generateLocalFallback(payload);
 
       // Save stat record locally as well
       saveLetterStat({
@@ -389,9 +376,9 @@ export default function App() {
       setGeneratedLetter(data);
       setStep("result");
     } catch (err: any) {
-      console.warn("Live generation failed or quota exceeded. Activating local database fallback...", err);
-      // Auto fallback to local generator on any error
-      handleLocalFallback(err.message || "Errore sconosciuto durante la generazione della lettera online.");
+      console.error("Errore nella generazione locale:", err);
+      setError("Impossibile generare la lettera locale. Verificare i dati e riprovare.");
+      setStep("error");
     }
   };
 
@@ -435,15 +422,6 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-2">
-            <a
-              href="/api/download-zip"
-              download="orientamento-lavoro-roma.zip"
-              className="flex items-center gap-1.5 text-xs bg-blue-50 hover:bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-200 border border-blue-200/80 dark:border-blue-800 px-3 py-1.5 rounded-full font-semibold transition-all cursor-pointer shadow-xs"
-              title="Esporta e scarica l'intera applicazione in formato ZIP (codice, database e server)"
-            >
-              <Download className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-              <span>Esporta ZIP</span>
-            </a>
             <button
               onClick={() => setIsAdminStatsOpen(true)}
               className="flex items-center gap-1.5 text-xs bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200/80 px-3 py-1.5 rounded-full font-semibold transition-all cursor-pointer shadow-xs"

@@ -1,163 +1,23 @@
 import { LetterStatRecord } from "../types";
 export type { LetterStatRecord };
 
-const STATS_STORAGE_KEY = "orientamento_lavoro_letter_stats_v1";
-
-// Sample initial stats to show realistic metrics immediately if clean
-const INITIAL_SAMPLE_STATS: LetterStatRecord[] = [
-  {
-    id: "stat_1722211000001",
-    timestamp: new Date(Date.now() - 3600000 * 2).toISOString(),
-    recipientName: "Ahmed",
-    gender: "M",
-    nationality: "Marocco",
-    italianLevel: "Basso",
-    jobSought: "Badante (assistenza anziani)",
-    zoneResident: "Ostia Lido",
-    zoneJobSought: "Municipio X / Ostia",
-    translationLanguage: "Arabo",
-    officinaOpportunity: true,
-    cooperativesCount: 10,
-    publicOfficesCount: 2,
-    schoolsCount: 2,
-    isLocalFallback: false
-  },
-  {
-    id: "stat_1722210000002",
-    timestamp: new Date(Date.now() - 3600000 * 8).toISOString(),
-    recipientName: "Maria",
-    gender: "F",
-    nationality: "Perù",
-    italianLevel: "Medio",
-    jobSought: "Colf/pulizie (servizi domestici)",
-    zoneResident: "Centocelle",
-    zoneJobSought: "Tutta Roma",
-    translationLanguage: "Spagnolo",
-    officinaOpportunity: false,
-    cooperativesCount: 10,
-    publicOfficesCount: 2,
-    schoolsCount: 2,
-    isLocalFallback: false
-  },
-  {
-    id: "stat_1722205000003",
-    timestamp: new Date(Date.now() - 3600000 * 20).toISOString(),
-    recipientName: "Elena",
-    gender: "F",
-    nationality: "Romania",
-    italianLevel: "Alto",
-    jobSought: "Badante (assistenza anziani)",
-    zoneResident: "Prati",
-    zoneJobSought: "Municipio I",
-    translationLanguage: "Rumeno",
-    officinaOpportunity: true,
-    cooperativesCount: 10,
-    publicOfficesCount: 2,
-    schoolsCount: 2,
-    isLocalFallback: false
-  },
-  {
-    id: "stat_1722190000004",
-    timestamp: new Date(Date.now() - 3600000 * 36).toISOString(),
-    recipientName: "Fatima",
-    gender: "F",
-    nationality: "Egitto",
-    italianLevel: "Nessuna",
-    jobSought: "Lavapiatti/aiuto cucina",
-    zoneResident: "Tor Pignattara",
-    zoneJobSought: "Municipio V",
-    translationLanguage: "Arabo",
-    officinaOpportunity: true,
-    cooperativesCount: 10,
-    publicOfficesCount: 2,
-    schoolsCount: 2,
-    isLocalFallback: false
-  },
-  {
-    id: "stat_1722180000005",
-    timestamp: new Date(Date.now() - 3600000 * 48).toISOString(),
-    recipientName: "Oksana",
-    gender: "F",
-    nationality: "Ucraina",
-    italianLevel: "Medio",
-    jobSought: "Badante (assistenza anziani)",
-    zoneResident: "Ostia",
-    zoneJobSought: "Municipio X",
-    translationLanguage: "Ucraino",
-    officinaOpportunity: false,
-    cooperativesCount: 10,
-    publicOfficesCount: 2,
-    schoolsCount: 2,
-    isLocalFallback: false
-  },
-  {
-    id: "stat_1722170000006",
-    timestamp: new Date(Date.now() - 3600000 * 60).toISOString(),
-    recipientName: "Bledar",
-    gender: "M",
-    nationality: "Albania",
-    italianLevel: "Alto",
-    jobSought: "Muratore/Operaio edile",
-    zoneResident: "Acilia",
-    zoneJobSought: "Roma Sud",
-    translationLanguage: "Albanese",
-    officinaOpportunity: true,
-    cooperativesCount: 10,
-    publicOfficesCount: 2,
-    schoolsCount: 2,
-    isLocalFallback: false
-  },
-  {
-    id: "stat_1722160000007",
-    timestamp: new Date(Date.now() - 3600000 * 72).toISOString(),
-    recipientName: "Joy",
-    gender: "F",
-    nationality: "Filippine",
-    italianLevel: "Medio",
-    jobSought: "Colf/pulizie (servizi domestici)",
-    zoneResident: "Eur",
-    zoneJobSought: "Municipio IX / IX",
-    translationLanguage: "Tagalog (Filippino)",
-    officinaOpportunity: false,
-    cooperativesCount: 10,
-    publicOfficesCount: 2,
-    schoolsCount: 2,
-    isLocalFallback: false
-  },
-  {
-    id: "stat_1722150000008",
-    timestamp: new Date(Date.now() - 3600000 * 96).toISOString(),
-    recipientName: "Tariq",
-    gender: "M",
-    nationality: "Bangladesh",
-    italianLevel: "Basso",
-    jobSought: "Lavapiatti/aiuto cucina",
-    zoneResident: "Esquilino",
-    zoneJobSought: "Centro Storico",
-    translationLanguage: "Bengalese",
-    officinaOpportunity: true,
-    cooperativesCount: 10,
-    publicOfficesCount: 2,
-    schoolsCount: 2,
-    isLocalFallback: false
-  }
-];
+const STATS_STORAGE_KEY = "orientamento_lavoro_letter_stats_web_v2";
 
 export function getLetterStats(): LetterStatRecord[] {
   try {
     const raw = localStorage.getItem(STATS_STORAGE_KEY);
     if (!raw) {
-      localStorage.setItem(STATS_STORAGE_KEY, JSON.stringify(INITIAL_SAMPLE_STATS));
-      return INITIAL_SAMPLE_STATS;
+      localStorage.setItem(STATS_STORAGE_KEY, JSON.stringify([]));
+      return [];
     }
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed) && parsed.length > 0) {
       return parsed;
     }
-    return INITIAL_SAMPLE_STATS;
+    return [];
   } catch (err) {
     console.error("Error reading stats from localStorage:", err);
-    return INITIAL_SAMPLE_STATS;
+    return [];
   }
 }
 
@@ -176,15 +36,7 @@ export function saveLetterStat(data: Omit<LetterStatRecord, "id" | "timestamp">)
     console.error("Error saving stat record to localStorage:", err);
   }
 
-  // Also send async log to server for centralized storage
-  fetch("/api/admin/log-letter", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(newRecord)
-  }).catch((err) => {
-    console.warn("Could not log stat record to server:", err);
-  });
-
+  // Le statistiche rimangono esclusivamente in questo browser.
   return newRecord;
 }
 
@@ -194,7 +46,6 @@ export function clearLetterStats(): void {
   } catch (err) {
     console.error("Error clearing stats:", err);
   }
-  fetch("/api/admin/clear-stats", { method: "POST" }).catch(() => {});
 }
 
 export interface AggregatedStats {
