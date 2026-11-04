@@ -1,7 +1,7 @@
 # Ricerca nuove voci e segnalazioni automatiche — ambiente di prova
 
 ## Stato
-La ricerca immediata usa **solo** il repertorio locale e sinonimi documentati nel codice. Non viene effettuata ricerca Internet: non attribuire a questo modulo informazioni web o fonti non consultate. Le nuove voci possono essere usate provvisoriamente nei campi liberi. Nessun dato dell'assistito deve essere inviato.
+La ricerca immediata usa il repertorio locale e sinonimi documentati nel codice. È disponibile anche il pulsante **Cerca anche sul web (Wikidata)**, che interroga esplicitamente l'API pubblica di Wikidata e mostra link alle schede originali. I risultati collaborativi non sono verificati, non garantiscono la corretta classificazione di professioni/nazionalità/quartieri e non vanno inseriti automaticamente nel repertorio. La ricerca può essere indisponibile per limiti API/CORS. Non inserire dati personali nelle ricerche. Le nuove voci possono essere usate provvisoriamente nei campi liberi. Nessun dato dell'assistito deve essere inviato.
 
 L'invio automatico a `dipenew@gmail.com` richiede **tre configurazioni manuali**: Google Apps Script, Cloudflare Turnstile e Cloudflare Worker. Non pubblicare il frontend con l'invio attivo prima di aver completato il test end-to-end. I servizi hanno livelli gratuiti e quote, da verificare nell'account prima dell'attivazione.
 
@@ -24,4 +24,4 @@ L'invio automatico a `dipenew@gmail.com` richiede **tre configurazioni manuali**
 - CORS/origin non costituiscono autenticazione; Turnstile riduce l'abuso ma non lo elimina.
 - Google Apps Script e Gmail hanno quote e possono bloccare richieste; il pulsante deve riportare l'esito reale.
 - Nessun inserimento automatico nel repertorio: l'email è una proposta da validare.
-- La ricerca di fonti Internet ufficiali è una funzionalità ulteriore, non implementata in questa versione.
+- La ricerca Wikidata è implementata ma non equivale a ricerca su fonti ufficiali ISTAT/Comune di Roma; una verifica su fonti ufficiali rimane necessaria prima dell'aggiornamento.
