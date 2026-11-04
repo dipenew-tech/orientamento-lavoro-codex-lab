@@ -26,6 +26,10 @@ export function resolveNewEntry(category: Category, value: string, existingValue
 export default function NewEntryLookup({ category, value, existingValues = [] }: Props) {
   const [status, setStatus] = useState("");
   const [busy, setBusy] = useState(false);
+  const [webBusy, setWebBusy] = useState(false);
+  const [webError, setWebError] = useState("");
+  const [webResults, setWebResults] = useState<{label:string;description:string;url:string}[]>([]);
+  const [lastSearched, setLastSearched] = useState("");
   const [turnstileToken, setTurnstileToken] = useState("");
   const captchaContainer = useRef<HTMLDivElement>(null);
   const siteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined;
@@ -41,6 +45,21 @@ export default function NewEntryLookup({ category, value, existingValues = [] }:
   }, [siteKey]);
   const result = resolveNewEntry(category, value, existingValues);
   const endpoint = import.meta.env.VITE_SUGGESTIONS_ENDPOINT as string | undefined;
+  async function searchWeb() {
+    const query = value.trim().slice(0, 120);
+    if (!query || webBusy) return;
+    setWebBusy(true); setWebError(""); setWebResults([]); setLastSearched(query);
+    try {
+      const params = new URLSearchParams({action:"wbsearchentities",search:query,language:"it",uselang:"it",type:"item",limit:"5",format:"json",origin:"*"});
+      const response = await fetch(`https://www.wikidata.org/w/api.php?${params}`, {credentials:"omit"});
+      if (!response.ok) throw new Error("Servizio non disponibile");
+      const data = await response.json() as {search?:{id:string;label:string;description?:string}[]};
+      const items = (data.search || []).filter(item => /^Q\\d+$/.test(item.id)).map(item => ({label:item.label,description:item.description || "Descrizione non disponibile",url:`https://www.wikidata.org/wiki/${item.id}`}));
+      setWebResults(items);
+      if (!items.length) setWebError("Nessun risultato trovato nella fonte consultata.");
+    } catch { setWebError("Ricerca web non disponibile. Usa le corrispondenze locali oppure riprova."); }
+    finally { setWebBusy(false); }
+  }
   async function report() {
     if (!value.trim() || !endpoint || !turnstileToken || busy) return;
     setBusy(true);
@@ -48,7 +67,7 @@ export default function NewEntryLookup({ category, value, existingValues = [] }:
     try {
       const response = await fetch(endpoint, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ category, value: value.trim().slice(0, 120), suggestions: result.suggestions, description: result.description, turnstileToken })
+        body: JSON.stringify({ category, value: value.trim().slice(0, 120), suggestions: result.suggestions, description: result.description, webResults: (lastSearched === value.trim().slice(0,120) ? webResults : []).map(item => `${item.label}: ${item.description} (${item.url})`), turnstileToken })
       });
       if (!response.ok) throw new Error("Invio non riuscito");
       setStatus("Segnalazione inviata per la verifica del repertorio.");
@@ -61,7 +80,11 @@ export default function NewEntryLookup({ category, value, existingValues = [] }:
     <strong>Ricerca locale — {category}</strong>
     <p className="mt-1">{result.description}</p>
     {result.suggestions.length > 0 && <p className="mt-1">Corrispondenze: {result.suggestions.join("; ")}</p>}
-    <p className="mt-1 text-slate-600">Risultati dal repertorio locale, non da Internet. Non includere nomi o dati degli assistiti.</p>
+    <p className="mt-1 text-slate-600">La ricerca locale non verifica i dati in tempo reale. Non inserire nomi o dati degli assistiti.</p>
+    <button type="button" onClick={searchWeb} disabled={webBusy || !value.trim()} className="mt-2 rounded border border-blue-700 px-3 py-2 text-blue-900 disabled:opacity-50">{webBusy ? "Ricerca in corso..." : "Cerca anche sul web (Wikidata)"}</button>
+    {lastSearched && lastSearched !== value.trim().slice(0,120) && <p className="mt-1 text-amber-700">La voce è cambiata: ripeti la ricerca web.</p>}
+    {webError && <p className="mt-2">{webError}</p>}
+    {lastSearched === value.trim().slice(0,120) && webResults.length > 0 && <div className="mt-2"><strong>Risultati web — Wikidata (da verificare)</strong><ul className="list-disc pl-4">{webResults.map(item => <li key={item.url}><a href={item.url} target="_blank" rel="noopener noreferrer" className="underline">{item.label}</a>: {item.description}</li>)}</ul><p className="mt-1">Wikidata è una fonte collaborativa: le voci possono essere omonime o non pertinenti. Verificare prima dell’uso.</p></div>}
     {endpoint && siteKey && <div ref={captchaContainer} className="mt-2" />}
     {endpoint && siteKey ? <button type="button" onClick={report} disabled={busy || !turnstileToken} className="mt-2 rounded bg-blue-800 px-3 py-2 text-white disabled:opacity-50">{busy ? "Invio in corso..." : "Segnala automaticamente per aggiornamento"}</button> : <p className="mt-1 font-semibold">Invio automatico in attesa della configurazione sicura del servizio email.</p>}
     {status && <p className="mt-2">{status}</p>}
