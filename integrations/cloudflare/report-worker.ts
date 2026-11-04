@@ -29,7 +29,8 @@ export default {
     const outgoing = {
       secret: env.REPORT_SECRET, category, value,
       suggestions: Array.isArray(payload.suggestions) ? payload.suggestions.slice(0, 6).map(x => String(x).slice(0, 100)) : [],
-      description: String(payload.description || "").slice(0, 600)
+      description: String(payload.description || "").slice(0, 600),
+      webResults: Array.isArray(payload.webResults) ? payload.webResults.slice(0, 5).map(x => String(x).slice(0, 300)) : []
     };
     const res = await fetch(env.APPS_SCRIPT_URL, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(outgoing), redirect: "follow" });
     if (!res.ok) return new Response(JSON.stringify({ok:false}), { status: 502, headers });
