@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { getMunicipioFromZone } from "../lib/localDb";
 
 type Category = "mestiere" | "nazionalita" | "quartiere";
@@ -26,16 +26,29 @@ export function resolveNewEntry(category: Category, value: string, existingValue
 export default function NewEntryLookup({ category, value, existingValues = [] }: Props) {
   const [status, setStatus] = useState("");
   const [busy, setBusy] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const captchaContainer = useRef<HTMLDivElement>(null);
+  const siteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined;
+  useEffect(() => {
+    if (!siteKey || !captchaContainer.current) return;
+    let cancelled = false;
+    const mount = () => {
+      const turnstile = (window as unknown as { turnstile?: { render: (el: HTMLElement, opts: Record<string, unknown>) => void } }).turnstile;
+      if (!cancelled && turnstile && captchaContainer.current && !captchaContainer.current.hasChildNodes()) turnstile.render(captchaContainer.current, { sitekey: siteKey, callback: (token: string) => setTurnstileToken(token), "expired-callback": () => setTurnstileToken("") });
+    };
+    if (!document.querySelector("script[data-caritas-turnstile]")) { const script = document.createElement("script"); script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"; script.async = true; script.dataset.caritasTurnstile = "1"; script.onload = mount; document.head.appendChild(script); } else { const timer = window.setInterval(mount, 300); return () => { cancelled = true; window.clearInterval(timer); }; }
+    return () => { cancelled = true; };
+  }, [siteKey]);
   const result = resolveNewEntry(category, value, existingValues);
   const endpoint = import.meta.env.VITE_SUGGESTIONS_ENDPOINT as string | undefined;
   async function report() {
-    if (!value.trim() || !endpoint || busy) return;
+    if (!value.trim() || !endpoint || !turnstileToken || busy) return;
     setBusy(true);
     setStatus("");
     try {
       const response = await fetch(endpoint, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ category, value: value.trim().slice(0, 120), suggestions: result.suggestions, description: result.description })
+        body: JSON.stringify({ category, value: value.trim().slice(0, 120), suggestions: result.suggestions, description: result.description, turnstileToken })
       });
       if (!response.ok) throw new Error("Invio non riuscito");
       setStatus("Segnalazione inviata per la verifica del repertorio.");
@@ -49,7 +62,8 @@ export default function NewEntryLookup({ category, value, existingValues = [] }:
     <p className="mt-1">{result.description}</p>
     {result.suggestions.length > 0 && <p className="mt-1">Corrispondenze: {result.suggestions.join("; ")}</p>}
     <p className="mt-1 text-slate-600">Risultati dal repertorio locale, non da Internet. Non includere nomi o dati degli assistiti.</p>
-    {endpoint ? <button type="button" onClick={report} disabled={busy} className="mt-2 rounded bg-blue-800 px-3 py-2 text-white disabled:opacity-50">{busy ? "Invio in corso..." : "Segnala automaticamente per aggiornamento"}</button> : <p className="mt-1 font-semibold">Invio automatico in attesa della configurazione sicura del servizio email.</p>}
+    {endpoint && siteKey && <div ref={captchaContainer} className="mt-2" />}
+    {endpoint && siteKey ? <button type="button" onClick={report} disabled={busy || !turnstileToken} className="mt-2 rounded bg-blue-800 px-3 py-2 text-white disabled:opacity-50">{busy ? "Invio in corso..." : "Segnala automaticamente per aggiornamento"}</button> : <p className="mt-1 font-semibold">Invio automatico in attesa della configurazione sicura del servizio email.</p>}
     {status && <p className="mt-2">{status}</p>}
   </div>;
 }
