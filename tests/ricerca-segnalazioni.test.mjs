@@ -7,7 +7,7 @@ const app = readFileSync("src/App.tsx", "utf8");
 test("Ricerca Wikidata esplicita con URL fonte e senza dati personali", () => {
   assert.match(component, /wbsearchentities/);
   assert.match(component, /Cerca anche sul web/);
-  assert.match(component, /wikidata.org\\/wiki/);
+  assert.ok(component.includes("www.wikidata.org/wiki"));
   assert.doesNotMatch(component, /recipientName/);
 });
 test("Nuove voci integrate per le tre categorie", () => {
