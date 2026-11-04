@@ -33,3 +33,13 @@ Questa versione è separata da Google AI Studio. Non usare dati personali reali 
 
 ## Condizione di rilascio
 Non procedere al passaggio definitivo finché i test automatici e le prove UAT non sono superati. Il vecchio sito resta disponibile per rollback.
+
+## Caricamento diretto su Cloudflare (senza collegamento GitHub)
+1. Aprire la scheda GitHub Actions del repository, selezionare **Web autonoma CI** e l'ultima esecuzione sul branch `feature/web-autonoma-gratuita`.
+2. Procedere **solo se** tutti i passaggi `npm ci`, `npm run lint`, `npm run build` e `npm test` risultano verdi.
+3. Scaricare l'artifact `cloudflare-pages-dist` generato dal workflow e decomprimerlo. L'archivio contiene direttamente `index.html` e la cartella `assets`: non caricare il codice sorgente.
+4. In Cloudflare Pages, progetto `orientamento-lavoro-caritas-test`, scegliere **Drag and drop your files** e caricare la cartella estratta oppure uno ZIP dei suoi contenuti.
+5. Eseguire il deployment **solo sul progetto di prova** e aprire l'indirizzo `https://orientamento-lavoro-caritas-test.pages.dev` quando Cloudflare conferma la pubblicazione.
+6. Eseguire le prove UAT riportate sopra con soli dati fittizi. Non collegare un dominio di produzione.
+
+**Nota:** l'artifact viene creato solo dopo l'esito positivo della pipeline; la sua presenza non sostituisce il collaudo manuale nel browser.
