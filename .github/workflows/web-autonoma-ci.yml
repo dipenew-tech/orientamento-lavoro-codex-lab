@@ -1,7 +1,7 @@
 name: Web autonoma CI
 on:
   push:
-    branches: [feature/web-autonoma-gratuita]
+    branches: [feature/web-autonoma-gratuita, feature/ricerca-segnalazioni]
   pull_request:
     branches: [main]
   workflow_dispatch:
