@@ -19,3 +19,10 @@ test("Invio protetto da Turnstile e segreti nel Worker", () => {
   assert.match(worker, /siteverify/);
   assert.doesNotMatch(component, /REPORT_SECRET/);
 });
+
+test("Selezione Wikidata distinta da apertura fonte", () => {
+  assert.match(component, /Conferma questa voce/);
+  assert.match(component, /setSelectedUrl\(item.url\)/);
+  assert.match(component, /onChoose\?\.\(item.label\)/);
+  assert.match(component, /target="_blank"/);
+});
