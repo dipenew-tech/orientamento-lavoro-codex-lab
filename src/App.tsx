@@ -542,6 +542,7 @@ export default function App() {
                             }}
                             className={`w-full px-3 py-2 ${t.inputBg} border ${t.inputBorder} ${t.inputFocus} rounded-xl focus:outline-none text-xs font-medium`}
                           />
+{/(vietnam|viet nam)/i.test(customNationality) && <p role="alert" className="text-sm text-amber-800">La traduzione vietnamita non è ancora disponibile nel generatore locale: verrà prodotta la lettera in italiano, senza una falsa traduzione inglese.</p>}
 <NewEntryLookup category="nazionalita" value={customNationality} onChoose={setCustomNationality} existingValues={NATIONALITIES_LIST} />
                         </div>
                       )}
