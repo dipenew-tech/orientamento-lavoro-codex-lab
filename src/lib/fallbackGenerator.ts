@@ -494,9 +494,9 @@ export function generateLocalFallback(inputs: {
 \n2. RICERCA DEL LAVORO: noi ti suggeriamo alcuni siti Internet o App dove dovrai iscriverti, allegando il tuo Curriculum e fornendo altre informazioni. Devi consultare spesso questi siti (ogni 1-2 giorni) perché le offerte volano subito via se non rispondi.`;
   }
 
-  if (isAltro && selectedCoops.length === 0) {
+  if (selectedCoops.length === 0) {
     const profession = jobSought.trim();
-    cooperativesIntro += `\\n\\nPER IL MESTIERE RICHIESTO (${profession}): verifica offerte con la denominazione esatta e sinonimi professionali presso il Centro per l'Impiego e le agenzie autorizzate; chiedi requisiti, qualifiche e disponibilità nella zona indicata. Il repertorio non contiene al momento strutture con corrispondenza professionale verificata: non presentiamo aziende generiche come opportunità specifiche.`;
+    cooperativesIntro += `\\n\\nPER IL MESTIERE RICHIESTO (${profession}): verifica offerte con la denominazione esatta e sinonimi professionali presso il Centro per l'Impiego e le agenzie autorizzate; chiedi requisiti, qualifiche e disponibilità nella zona indicata. AGENZIE E COOPERATIVE: al momento nessuna struttura del repertorio ha un abbinamento verificato per questa professione nel territorio richiesto. Alcune schede esistono, ma sono escluse dal matching automatico perché la pertinenza professionale non è documentata. Per trovare opportunità concrete, consulta gli annunci aggiornati dei portali di lavoro e chiedi al CPI/COL competente di verificare agenzie autorizzate e offerte per facchinaggio, logistica e magazzino (se pertinenti al mestiere scelto). Non indicare queste strutture come opportunità già verificate.`;
   }
 
   if (officinaOpportunity) {
