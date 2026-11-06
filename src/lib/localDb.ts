@@ -2835,19 +2835,13 @@ export function queryLocalDb(jobSought: string, zoneResident: string, zoneJobSou
   const munOnly = baseList.filter(item => item.municipio === targetMun && !hasKeyword(item));
   const otherMunKeyword = baseList.filter(item => item.municipio !== targetMun && hasKeyword(item));
   
-  const remainingInland = baseList.filter(item => item.municipio !== targetMun && item.municipio !== "Municipio X" && !hasKeyword(item));
-  const remainingOstia = baseList.filter(item => item.municipio !== targetMun && item.municipio === "Municipio X" && !hasKeyword(item));
-
-  const remainingOthers = (targetMun === "Municipio X")
-    ? [...remainingOstia, ...remainingInland]
-    : [...remainingInland, ...remainingOstia];
-
+  // Priorità rigorosa al territorio richiesto. Non riempire con enti di tutta Roma.
+  // Per zone non riconosciute occorre conferma manuale del Municipio.
   const combined = [
     ...customMatching,
     ...munAndKeyword,
     ...munOnly,
-    ...otherMunKeyword,
-    ...remainingOthers
+    ...otherMunKeyword
   ];
 
   const uniqueList: LocalCooperative[] = [];
