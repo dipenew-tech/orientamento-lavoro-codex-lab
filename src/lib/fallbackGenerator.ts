@@ -455,7 +455,7 @@ export function generateLocalFallback(inputs: {
   );
 
   // 1. Resolve Cooperatives based on jobSought category with high precision from the curated local database
-  let selectedCoops: Cooperative[] = isAltro ? [] : queryLocalDb(jobSought, zoneResident, zoneJobSought);
+  let selectedCoops: Cooperative[] = queryLocalDb(jobSought, zoneResident, zoneJobSought);
 
 
   // 2. Resolve Public Offices based on zoneResident
@@ -489,9 +489,14 @@ export function generateLocalFallback(inputs: {
 \n4. ALTRI UFFICI COMUNALI: ti suggeriamo anche andare al COL Centro Orientamento Lavoro di ${colDetails} e a Portafuturo di Via Galvani 108 (vicino alla Metro Piramide); sono altri uffici comunali che ti possono aiutare a cercare lavoro.
 \n5. NOSTRE SEGNALAZIONI: se ci arrivano offerte di lavoro dirette o tramite la nostra sede te le segnaleremo via email.`;
 
-  if (isAltro) {
+  if (isAltro && selectedCoops.length === 0) {
     cooperativesIntro = `1. CURRICULUM: serve per elencare le tue esperienze di lavoro, per indicare il lavoro da te desiderato, e capire dove impegnarti al meglio nella ricerca. Il curriculum va aggiornato il più possibile. Nel curriculum elencheremo anche i tuoi punti di forza e capire se vuoi impegnarti anche in altre aree diverse da quelle seguite finora.
 \n2. RICERCA DEL LAVORO: noi ti suggeriamo alcuni siti Internet o App dove dovrai iscriverti, allegando il tuo Curriculum e fornendo altre informazioni. Devi consultare spesso questi siti (ogni 1-2 giorni) perché le offerte volano subito via se non rispondi.`;
+  }
+
+  if (isAltro && selectedCoops.length === 0) {
+    const profession = jobSought.trim();
+    cooperativesIntro += `\\n\\nPER IL MESTIERE RICHIESTO (${profession}): verifica offerte con la denominazione esatta e sinonimi professionali presso il Centro per l'Impiego e le agenzie autorizzate; chiedi requisiti, qualifiche e disponibilità nella zona indicata. Il repertorio non contiene al momento strutture con corrispondenza professionale verificata: non presentiamo aziende generiche come opportunità specifiche.`;
   }
 
   if (officinaOpportunity) {
@@ -594,6 +599,7 @@ export function generateLocalFallback(inputs: {
       resolvedLang = "Inglese";
     }
 
+    const unsupportedLanguage = nat.includes("vietnam") || nat.includes("viet nam");
     const dict = translations[langKey];
     
     // Trim cooperativesIntro for Altro in translated language
@@ -670,7 +676,7 @@ export function generateLocalFallback(inputs: {
       .replace("${colDetails}", colDetails)
       .replace(/\${recipientName}|\$recipientName|\${recipeint}|\$recipeint|\$recipient/gi, nameToInsert);
 
-    translatedLetter = {
+    translatedLetter = unsupportedLanguage ? undefined : {
       greeting: formattedGreeting,
       intro: finalIntro,
       cooperativesIntro: finalCoopsIntro.replace(/\b10\b/g, String(selectedCoops.length)),
@@ -680,20 +686,20 @@ export function generateLocalFallback(inputs: {
     };
 
     // Translate the annex items (cooperatives, offices, and schools)
-    selectedCoops = selectedCoops.map(c => ({
+    if (!unsupportedLanguage) selectedCoops = selectedCoops.map(c => ({
       ...c,
       translatedName: translateText(c.name, langKey),
       translatedDescription: translateText(c.description, langKey)
     }));
 
-    selectedOffices = selectedOffices.map(o => ({
+    if (!unsupportedLanguage) selectedOffices = selectedOffices.map(o => ({
       ...o,
       translatedType: translateText(o.type, langKey),
       translatedName: translateText(o.name, langKey),
       translatedDescription: translateText(o.description, langKey)
     }));
 
-    selectedSchools = selectedSchools.map(s => ({
+    if (!unsupportedLanguage) selectedSchools = selectedSchools.map(s => ({
       ...s,
       translatedName: translateText(s.name, langKey),
       translatedDescription: translateText(s.description, langKey)
@@ -705,8 +711,8 @@ export function generateLocalFallback(inputs: {
     subject: `Orientamento al lavoro per ${jobSought}`,
     recipientName: recipientName || "Gentile Utente",
     italianLetter,
-    hasTranslation: !isItalian,
-    translationLanguage: resolvedLang,
+    hasTranslation: !isItalian && !!translatedLetter,
+    translationLanguage: translatedLetter ? resolvedLang : "Traduzione non disponibile per la lingua richiesta",
     translatedLetter,
     cooperatives: selectedCoops,
     publicOffices: selectedOffices,
