@@ -51,7 +51,7 @@ export default function NewEntryLookup({ category, value, existingValues = [], o
   async function searchWeb() {
     const query = value.trim().slice(0, 120);
     if (!query || webBusy) return;
-    setWebBusy(true); setWebError(""); setWebResults([]); setSelectedUrl(""); setConfirmedChoice(""); setTurnstileToken(""); setLastSearched(query);
+    setWebBusy(true); setWebError(""); setWebResults([]); setSelectedUrl(""); setConfirmedChoice(""); setLastSearched(query);
     try {
       const params = new URLSearchParams({action:"wbsearchentities",search:query,language:"it",uselang:"it",type:"item",limit:"5",format:"json",origin:"*"});
       const response = await fetch(`https://www.wikidata.org/w/api.php?${params}`, {credentials:"omit"});
@@ -82,7 +82,7 @@ export default function NewEntryLookup({ category, value, existingValues = [], o
     } catch {
       sentKeys.current.delete(key);
       setStatus("Invio non riuscito. La voce resta utilizzabile nella scheda.");
-    } finally { setBusy(false); setTurnstileToken(""); }
+    } finally { setBusy(false); setTurnstileToken(""); (window as unknown as {turnstile?: {reset: (el: HTMLElement) => void}}).turnstile?.reset(captchaContainer.current!); }
   }
   useEffect(() => {
     if (confirmedChoice && selectedUrl && turnstileToken && endpoint && !busy) void report();
