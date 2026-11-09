@@ -482,6 +482,10 @@ export function generateLocalFallback(inputs: {
   let intro = `siamo lieti che ti sei ${isFemale ? "rivolta" : "rivolto"} a noi per chiedere aiuto nella ricerca di lavoro. Cerchiamo di aiutarti a trovare opportunità adatte a te e per far questo vorremmo — con spirito di amicizia — darti qualche suggerimento.
 \nAnzitutto considera che CERCARE LAVORO È UN LAVORO: cioè la ricerca va fatta con impegno, rispettando certi orari che stabilisci da ${isFemale ? "sola" : "solo"} (ad es. 2 ore al giorno), consultando e cercando in maniera autonoma tutti i punti di offerta lavoro, i siti internet, le app, le agenzie, ecc. Noi siamo disponibili a darti consigli e indirizzarti ma la ricerca va fatta da ${isFemale ? "sola" : "solo"} anche perché vengono chiesti dati personali per la registrazione. Noi faremo insieme:`;
 
+  // Le voci scelte nel percorso "Altro" entrano nel testo, non soltanto nei metadati.
+  const nationalityForLetter = nationality.replace(/^altro\\s*:\\s*/i, "").trim();
+  intro += `\\n\\nDATI CONFERMATI PER L'ORIENTAMENTO — Professione richiesta: ${jobSought.trim()}; nazionalità indicata: ${nationalityForLetter}.`;
+
   let cooperativesIntro = `1. CURRICULUM: serve per elencare le tue esperienze di lavoro, per indicare il lavoro da te desiderato, e capire dove impegnarti al meglio nella ricerca. Il curriculum va aggiornato il più possibile. Nel curriculum elencheremo anche i tuoi punti di forza e capire se vuoi impegnarti anche in altre aree diverse da quelle seguite finora.
 \n2. RICERCA DEL LAVORO: noi ti suggeriamo alcuni siti Internet o App dove dovrai iscriverti, allegando il tuo Curriculum e fornendo altre informazioni. Devi consultare spesso questi siti (ogni 1-2 giorni) perché le offerte volano subito via se non rispondi. Inoltre, puoi visitare o telefonare ad agenzie di lavoro, cooperative, ecc. (di cui ti daremo qualche riferimento, ma devi essere tu a contattarli e prendere appuntamento). In allegato trovi i riferimenti disponibili: prima di inviare il curriculum verifica con ciascun ente le posizioni aperte, i requisiti e il canale di candidatura.`;
 
