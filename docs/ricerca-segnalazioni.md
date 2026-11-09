@@ -25,3 +25,11 @@ L'invio automatico a `dipenew@gmail.com` richiede **tre configurazioni manuali**
 - Google Apps Script e Gmail hanno quote e possono bloccare richieste; il pulsante deve riportare l'esito reale.
 - Nessun inserimento automatico nel repertorio: l'email è una proposta da validare.
 - La ricerca Wikidata è implementata ma non equivale a ricerca su fonti ufficiali ISTAT/Comune di Roma; una verifica su fonti ufficiali rimane necessaria prima dell'aggiornamento.
+
+## Flusso previsto per il collaudo finale
+- Scegliere «Altro» per nazionalità e/o professione, digitare la voce, premere «Cerca anche sul web (Wikidata)», selezionare una scheda tramite radio button e premere «Conferma questa voce».
+- La scelta viene trasferita al campo e compare nel testo italiano della lettera. La selezione non implica che esista una traduzione nella lingua scelta: non inventare traduzioni.
+- Se il Worker, Turnstile e lo script Gmail sono configurati, la segnalazione viene inviata automaticamente dopo conferma e verifica anti-abuso. L'email contiene categoria, voce e link Wikidata scelto, mai nome o dati della persona assistita.
+- Se non sono configurati, l'interfaccia segnala chiaramente che l'invio non è attivo. Non dichiarare la ricezione email senza testare la casella.
+- La presenza di una professione nel DB non garantisce strutture con matching autorizzato: quelle con `automaticMatching:false` non devono comparire come opportunità verificate.
+- La build CI ordinaria non include le variabili VITE per email. Per il collaudo dell'invio occorre una build specifica con `VITE_SUGGESTIONS_ENDPOINT` e `VITE_TURNSTILE_SITE_KEY` impostate prima di `npm run build`.
