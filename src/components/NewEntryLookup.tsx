@@ -33,6 +33,7 @@ export default function NewEntryLookup({ category, value, existingValues = [], o
   const [selectedUrl, setSelectedUrl] = useState("");
   const [confirmedChoice, setConfirmedChoice] = useState("");
   const sentKeys = useRef(new Set<string>());
+  const [retryReady, setRetryReady] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState("");
   const captchaContainer = useRef<HTMLDivElement>(null);
   const siteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined;
@@ -51,7 +52,7 @@ export default function NewEntryLookup({ category, value, existingValues = [], o
   async function searchWeb() {
     const query = value.trim().slice(0, 120);
     if (!query || webBusy) return;
-    setWebBusy(true); setWebError(""); setWebResults([]); setSelectedUrl(""); setConfirmedChoice(""); setLastSearched(query);
+    setWebBusy(true); setWebError(""); setWebResults([]); setSelectedUrl(""); setConfirmedChoice(""); setStatus(""); setRetryReady(false); setLastSearched(query);
     try {
       const params = new URLSearchParams({action:"wbsearchentities",search:query,language:"it",uselang:"it",type:"item",limit:"5",format:"json",origin:"*"});
       const response = await fetch(`https://www.wikidata.org/w/api.php?${params}`, {credentials:"omit"});
@@ -69,6 +70,7 @@ export default function NewEntryLookup({ category, value, existingValues = [], o
     if (sentKeys.current.has(key)) return;
     sentKeys.current.add(key);
     setBusy(true);
+    setRetryReady(false);
     setStatus("");
     try {
       const response = await fetch(endpoint, {
@@ -81,11 +83,11 @@ export default function NewEntryLookup({ category, value, existingValues = [], o
       setStatus("Segnalazione inviata per la verifica del repertorio.");
     } catch (error) {
       const detail = error instanceof Error ? error.message : "Errore di rete";
-      setStatus(`Invio non riuscito (${detail}). La voce resta utilizzabile nella scheda. Per riprovare, premi Riprova invio dopo la verifica anti-abuso.`);
+      setStatus(`Invio non riuscito (${detail}). La voce resta utilizzabile nella scheda.`);
+      setRetryReady(true);
     } finally {
       setBusy(false);
-      setTurnstileToken("");
-      if (captchaContainer.current) (window as unknown as {turnstile?: {reset: (el: HTMLElement) => void}}).turnstile?.reset(captchaContainer.current);
+      // Do not reset Turnstile automatically: its callback would trigger another POST.
     }
   }
   useEffect(() => {
@@ -104,6 +106,6 @@ export default function NewEntryLookup({ category, value, existingValues = [], o
     {endpoint && siteKey && <div className="mt-2"><p>Verifica anti-abuso per la segnalazione automatica:</p><div ref={captchaContainer} /></div>}
     {endpoint && siteKey ? <p className="mt-2 font-medium">{busy ? "Invio segnalazione in corso..." : confirmedChoice ? "La segnalazione parte automaticamente dopo la conferma e la verifica anti-abuso." : "Seleziona e conferma una voce per inviare automaticamente la segnalazione."}</p> : <p className="mt-1 font-semibold">Invio automatico non attivo: manca la configurazione sicura del servizio email. La voce confermata resta utilizzabile nella lettera.</p>}
     {status && <p className="mt-2">{status}</p>}
-    {status.startsWith("Invio non riuscito") && <button type="button" disabled={busy || !turnstileToken} onClick={() => { sentKeys.current.delete(`${category}:${selectedUrl}:${confirmedChoice}`); void report(); }} className="mt-2 rounded border border-blue-700 px-3 py-2 text-blue-900 disabled:opacity-50">Riprova invio</button>}
+    {retryReady && <button type="button" disabled={busy} onClick={() => { setRetryReady(false); setStatus("Completa nuovamente la verifica anti-abuso per riprovare."); setTurnstileToken(""); sentKeys.current.delete(`${category}:${selectedUrl}:${confirmedChoice}`); if (captchaContainer.current) (window as unknown as {turnstile?: {reset: (el: HTMLElement) => void}}).turnstile?.reset(captchaContainer.current); }} className="mt-2 rounded border border-blue-700 px-3 py-2 text-blue-900 disabled:opacity-50">Riprova invio</button>}
   </div>;
 }
