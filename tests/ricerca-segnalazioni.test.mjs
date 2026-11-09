@@ -26,3 +26,10 @@ test("Selezione Wikidata distinta da apertura fonte", () => {
   assert.match(component, /onChoose\?\.\(item.label\)/);
   assert.match(component, /target="_blank"/);
 });
+
+test("Segnalazione automatica soltanto dopo conferma e senza dati assistito", () => {
+  assert.match(component, /confirmedChoice && selectedUrl && turnstileToken/);
+  assert.match(component, /sentKeys\.current\.has\(key\)/);
+  assert.match(component, /receipt\.ok !== true/);
+  assert.doesNotMatch(component, /recipientName/);
+});
