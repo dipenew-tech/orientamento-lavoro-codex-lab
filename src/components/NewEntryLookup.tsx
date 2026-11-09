@@ -45,13 +45,13 @@ export default function NewEntryLookup({ category, value, existingValues = [], o
     };
     if (!document.querySelector("script[data-caritas-turnstile]")) { const script = document.createElement("script"); script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"; script.async = true; script.dataset.caritasTurnstile = "1"; script.onload = mount; document.head.appendChild(script); } else { const timer = window.setInterval(mount, 300); return () => { cancelled = true; window.clearInterval(timer); }; }
     return () => { cancelled = true; };
-  }, [siteKey]);
+  }, [siteKey, Boolean(value.trim())]);
   const result = resolveNewEntry(category, value, existingValues);
   const endpoint = import.meta.env.VITE_SUGGESTIONS_ENDPOINT as string | undefined;
   async function searchWeb() {
     const query = value.trim().slice(0, 120);
     if (!query || webBusy) return;
-    setWebBusy(true); setWebError(""); setWebResults([]); setSelectedUrl(""); setConfirmedChoice(""); setLastSearched(query);
+    setWebBusy(true); setWebError(""); setWebResults([]); setSelectedUrl(""); setConfirmedChoice(""); setTurnstileToken(""); setLastSearched(query);
     try {
       const params = new URLSearchParams({action:"wbsearchentities",search:query,language:"it",uselang:"it",type:"item",limit:"5",format:"json",origin:"*"});
       const response = await fetch(`https://www.wikidata.org/w/api.php?${params}`, {credentials:"omit"});
@@ -64,7 +64,7 @@ export default function NewEntryLookup({ category, value, existingValues = [], o
     finally { setWebBusy(false); }
   }
   async function report() {
-    if (!confirmedChoice || !endpoint || !turnstileToken || busy) return;
+    if (!confirmedChoice || !selectedUrl || !endpoint || !turnstileToken || busy) return;
     const key = `${category}:${selectedUrl}:${confirmedChoice}`;
     if (sentKeys.current.has(key)) return;
     sentKeys.current.add(key);
@@ -82,11 +82,11 @@ export default function NewEntryLookup({ category, value, existingValues = [], o
     } catch {
       sentKeys.current.delete(key);
       setStatus("Invio non riuscito. La voce resta utilizzabile nella scheda.");
-    } finally { setBusy(false); }
+    } finally { setBusy(false); setTurnstileToken(""); }
   }
   useEffect(() => {
     if (confirmedChoice && selectedUrl && turnstileToken && endpoint && !busy) void report();
-  }, [confirmedChoice, selectedUrl, turnstileToken, endpoint]);
+  }, [confirmedChoice, selectedUrl, turnstileToken, endpoint, category]);
   if (!value.trim()) return null;
   return <div className="mt-2 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-slate-800" aria-live="polite">
     <strong>Ricerca locale — {category}</strong>
