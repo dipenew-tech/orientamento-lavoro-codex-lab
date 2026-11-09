@@ -17,6 +17,9 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run build
+        env:
+          VITE_SUGGESTIONS_ENDPOINT: https://caritas-segnalazioni.dipenew.workers.dev/
+          VITE_TURNSTILE_SITE_KEY: 0x4AAAAAAF5tXMCbOOr52_AN
       - run: npm test
       - uses: actions/upload-artifact@v4
         with:
