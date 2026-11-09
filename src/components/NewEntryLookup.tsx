@@ -75,12 +75,13 @@ export default function NewEntryLookup({ category, value, existingValues = [], o
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ category, value: confirmedChoice.slice(0, 120), suggestions: result.suggestions, description: result.description, webResults: webResults.filter(item => item.url === selectedUrl).map(item => `${item.label}: ${item.description} (${item.url})`), turnstileToken })
       });
-      if (!response.ok) throw new Error("Invio non riuscito");
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const receipt = await response.json() as {ok?:boolean};
-      if (receipt.ok !== true) throw new Error("Invio non confermato");
+      if (receipt.ok !== true) throw new Error("Risposta non confermata");
       setStatus("Segnalazione inviata per la verifica del repertorio.");
-    } catch {
-      setStatus("Invio non riuscito. La voce resta utilizzabile nella scheda. Per riprovare, premi Riprova invio dopo la verifica anti-abuso.");
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : "Errore di rete";
+      setStatus(`Invio non riuscito (${detail}). La voce resta utilizzabile nella scheda. Per riprovare, premi Riprova invio dopo la verifica anti-abuso.`);
     } finally {
       setBusy(false);
       setTurnstileToken("");
