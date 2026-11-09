@@ -455,7 +455,7 @@ export function generateLocalFallback(inputs: {
   );
 
   // 1. Resolve Cooperatives based on jobSought category with high precision from the curated local database
-  let selectedCoops: Cooperative[] = isAltro ? [] : queryLocalDb(jobSought, zoneResident, zoneJobSought);
+  let selectedCoops: Cooperative[] = queryLocalDb(jobSought, zoneResident, zoneJobSought);
 
 
   // 2. Resolve Public Offices based on zoneResident
@@ -482,6 +482,10 @@ export function generateLocalFallback(inputs: {
   let intro = `siamo lieti che ti sei ${isFemale ? "rivolta" : "rivolto"} a noi per chiedere aiuto nella ricerca di lavoro. Cerchiamo di aiutarti a trovare opportunità adatte a te e per far questo vorremmo — con spirito di amicizia — darti qualche suggerimento.
 \nAnzitutto considera che CERCARE LAVORO È UN LAVORO: cioè la ricerca va fatta con impegno, rispettando certi orari che stabilisci da ${isFemale ? "sola" : "solo"} (ad es. 2 ore al giorno), consultando e cercando in maniera autonoma tutti i punti di offerta lavoro, i siti internet, le app, le agenzie, ecc. Noi siamo disponibili a darti consigli e indirizzarti ma la ricerca va fatta da ${isFemale ? "sola" : "solo"} anche perché vengono chiesti dati personali per la registrazione. Noi faremo insieme:`;
 
+  // Le voci scelte nel percorso "Altro" entrano nel testo, non soltanto nei metadati.
+  const nationalityForLetter = nationality.replace(/^altro\\s*:\\s*/i, "").trim();
+  intro += `\\n\\nDATI CONFERMATI PER L'ORIENTAMENTO — Professione richiesta: ${jobSought.trim()}; nazionalità indicata: ${nationalityForLetter}.`;
+
   let cooperativesIntro = `1. CURRICULUM: serve per elencare le tue esperienze di lavoro, per indicare il lavoro da te desiderato, e capire dove impegnarti al meglio nella ricerca. Il curriculum va aggiornato il più possibile. Nel curriculum elencheremo anche i tuoi punti di forza e capire se vuoi impegnarti anche in altre aree diverse da quelle seguite finora.
 \n2. RICERCA DEL LAVORO: noi ti suggeriamo alcuni siti Internet o App dove dovrai iscriverti, allegando il tuo Curriculum e fornendo altre informazioni. Devi consultare spesso questi siti (ogni 1-2 giorni) perché le offerte volano subito via se non rispondi. Inoltre, puoi visitare o telefonare ad agenzie di lavoro, cooperative, ecc. (di cui ti daremo qualche riferimento, ma devi essere tu a contattarli e prendere appuntamento). In allegato trovi i riferimenti disponibili: prima di inviare il curriculum verifica con ciascun ente le posizioni aperte, i requisiti e il canale di candidatura.`;
 
@@ -489,9 +493,14 @@ export function generateLocalFallback(inputs: {
 \n4. ALTRI UFFICI COMUNALI: ti suggeriamo anche andare al COL Centro Orientamento Lavoro di ${colDetails} e a Portafuturo di Via Galvani 108 (vicino alla Metro Piramide); sono altri uffici comunali che ti possono aiutare a cercare lavoro.
 \n5. NOSTRE SEGNALAZIONI: se ci arrivano offerte di lavoro dirette o tramite la nostra sede te le segnaleremo via email.`;
 
-  if (isAltro) {
+  if (isAltro && selectedCoops.length === 0) {
     cooperativesIntro = `1. CURRICULUM: serve per elencare le tue esperienze di lavoro, per indicare il lavoro da te desiderato, e capire dove impegnarti al meglio nella ricerca. Il curriculum va aggiornato il più possibile. Nel curriculum elencheremo anche i tuoi punti di forza e capire se vuoi impegnarti anche in altre aree diverse da quelle seguite finora.
 \n2. RICERCA DEL LAVORO: noi ti suggeriamo alcuni siti Internet o App dove dovrai iscriverti, allegando il tuo Curriculum e fornendo altre informazioni. Devi consultare spesso questi siti (ogni 1-2 giorni) perché le offerte volano subito via se non rispondi.`;
+  }
+
+  if (selectedCoops.length === 0) {
+    const profession = jobSought.trim();
+    cooperativesIntro += `\\n\\nPER IL MESTIERE RICHIESTO (${profession}): verifica offerte con la denominazione esatta e sinonimi professionali presso il Centro per l'Impiego e le agenzie autorizzate; chiedi requisiti, qualifiche e disponibilità nella zona indicata. AGENZIE E COOPERATIVE: al momento nessuna struttura del repertorio ha un abbinamento verificato per questa professione nel territorio richiesto. Alcune schede esistono, ma sono escluse dal matching automatico perché la pertinenza professionale non è documentata. Per trovare opportunità concrete, consulta gli annunci aggiornati dei portali di lavoro e chiedi al CPI/COL competente di verificare agenzie autorizzate e offerte per la professione richiesta e le sue denominazioni equivalenti. Non indicare queste strutture come opportunità già verificate.`;
   }
 
   if (officinaOpportunity) {
@@ -594,6 +603,7 @@ export function generateLocalFallback(inputs: {
       resolvedLang = "Inglese";
     }
 
+    const unsupportedLanguage = nat.includes("vietnam") || nat.includes("viet nam");
     const dict = translations[langKey];
     
     // Trim cooperativesIntro for Altro in translated language
@@ -670,7 +680,7 @@ export function generateLocalFallback(inputs: {
       .replace("${colDetails}", colDetails)
       .replace(/\${recipientName}|\$recipientName|\${recipeint}|\$recipeint|\$recipient/gi, nameToInsert);
 
-    translatedLetter = {
+    translatedLetter = unsupportedLanguage ? undefined : {
       greeting: formattedGreeting,
       intro: finalIntro,
       cooperativesIntro: finalCoopsIntro.replace(/\b10\b/g, String(selectedCoops.length)),
@@ -680,20 +690,20 @@ export function generateLocalFallback(inputs: {
     };
 
     // Translate the annex items (cooperatives, offices, and schools)
-    selectedCoops = selectedCoops.map(c => ({
+    if (!unsupportedLanguage) selectedCoops = selectedCoops.map(c => ({
       ...c,
       translatedName: translateText(c.name, langKey),
       translatedDescription: translateText(c.description, langKey)
     }));
 
-    selectedOffices = selectedOffices.map(o => ({
+    if (!unsupportedLanguage) selectedOffices = selectedOffices.map(o => ({
       ...o,
       translatedType: translateText(o.type, langKey),
       translatedName: translateText(o.name, langKey),
       translatedDescription: translateText(o.description, langKey)
     }));
 
-    selectedSchools = selectedSchools.map(s => ({
+    if (!unsupportedLanguage) selectedSchools = selectedSchools.map(s => ({
       ...s,
       translatedName: translateText(s.name, langKey),
       translatedDescription: translateText(s.description, langKey)
@@ -705,8 +715,8 @@ export function generateLocalFallback(inputs: {
     subject: `Orientamento al lavoro per ${jobSought}`,
     recipientName: recipientName || "Gentile Utente",
     italianLetter,
-    hasTranslation: !isItalian,
-    translationLanguage: resolvedLang,
+    hasTranslation: !isItalian && !!translatedLetter,
+    translationLanguage: translatedLetter ? resolvedLang : "Traduzione non disponibile per la lingua richiesta",
     translatedLetter,
     cooperatives: selectedCoops,
     publicOffices: selectedOffices,
