@@ -80,9 +80,12 @@ export default function NewEntryLookup({ category, value, existingValues = [], o
       if (receipt.ok !== true) throw new Error("Invio non confermato");
       setStatus("Segnalazione inviata per la verifica del repertorio.");
     } catch {
-      sentKeys.current.delete(key);
-      setStatus("Invio non riuscito. La voce resta utilizzabile nella scheda.");
-    } finally { setBusy(false); setTurnstileToken(""); (window as unknown as {turnstile?: {reset: (el: HTMLElement) => void}}).turnstile?.reset(captchaContainer.current!); }
+      setStatus("Invio non riuscito. La voce resta utilizzabile nella scheda. Per riprovare, premi Riprova invio dopo la verifica anti-abuso.");
+    } finally {
+      setBusy(false);
+      setTurnstileToken("");
+      if (captchaContainer.current) (window as unknown as {turnstile?: {reset: (el: HTMLElement) => void}}).turnstile?.reset(captchaContainer.current);
+    }
   }
   useEffect(() => {
     if (confirmedChoice && selectedUrl && turnstileToken && endpoint && !busy) void report();
@@ -100,5 +103,6 @@ export default function NewEntryLookup({ category, value, existingValues = [], o
     {endpoint && siteKey && <div className="mt-2"><p>Verifica anti-abuso per la segnalazione automatica:</p><div ref={captchaContainer} /></div>}
     {endpoint && siteKey ? <p className="mt-2 font-medium">{busy ? "Invio segnalazione in corso..." : confirmedChoice ? "La segnalazione parte automaticamente dopo la conferma e la verifica anti-abuso." : "Seleziona e conferma una voce per inviare automaticamente la segnalazione."}</p> : <p className="mt-1 font-semibold">Invio automatico non attivo: manca la configurazione sicura del servizio email. La voce confermata resta utilizzabile nella lettera.</p>}
     {status && <p className="mt-2">{status}</p>}
+    {status.startsWith("Invio non riuscito") && <button type="button" disabled={busy || !turnstileToken} onClick={() => { sentKeys.current.delete(`${category}:${selectedUrl}:${confirmedChoice}`); void report(); }} className="mt-2 rounded border border-blue-700 px-3 py-2 text-blue-900 disabled:opacity-50">Riprova invio</button>}
   </div>;
 }
