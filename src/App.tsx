@@ -272,14 +272,18 @@ export default function App() {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const submitting = useRef(false);
-  const [sendingReports, setSendingReports] = useState(false);
+  const letterRequest = useRef(0);
   const jobReport = useRef<EntryReportHandle>(null);
   const nationalityReport = useRef<EntryReportHandle>(null);
   const [pendingReportDrafts, setPendingReportDrafts] = useState<{ label: string; href: string }[]>([]);
   const job = (isOtherJob ? customJob : formData.jobSought).trim();
   const nat = (isOtherNationality ? customNationality : formData.nationality).trim();
-  const canGenerate = Boolean(nat && job && formData.zoneResident.trim() && formData.zoneJobSought.trim());
+  const missingLetterFields = [
+    !nat && "nazionalità",
+    !job && "professione",
+    !formData.zoneResident.trim() && "quartiere di residenza",
+    !formData.zoneJobSought.trim() && "zona dove cercare lavoro",
+  ].filter(Boolean);
   const [showJobBoards, setShowJobBoards] = useState(false);
   const [jobSearchTerm, setJobSearchTerm] = useState("");
   const [openedJobSearch, setOpenedJobSearch] = useState("");
@@ -303,12 +307,11 @@ export default function App() {
     if (isOtherJob) void jobReport.current?.send();
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (submitting.current) return;
     setError(null);
-    if (!canGenerate) {
-      setError("Indica nazionalità, professione e zone.");
+    if (missingLetterFields.length) {
+      setError("Completa questi campi: " + missingLetterFields.join(", ") + ".");
       return;
     }
 
@@ -317,20 +320,23 @@ export default function App() {
       return;
     }
 
-    submitting.current = true;
-    setSendingReports(true);
+    const request = ++letterRequest.current;
+    setPendingReportDrafts([]);
     const reports = [
       ...(isOtherNationality ? [{ report: nationalityReport.current, category: "nazionalita" as const, entry: nat, label: "Nazionalità" }] : []),
       ...(isOtherJob ? [{ report: jobReport.current, category: "mestiere" as const, entry: job, label: "Professione" }] : []),
     ];
-    const outcomes = await Promise.all(reports.map(async item => ({
-      ...item, accepted: await item.report?.send(),
-    })));
-    setPendingReportDrafts(outcomes.filter(item => !item.accepted).map(item => ({
-      label: item.label, href: getEntryReportMailto(item.category, item.entry),
-    })));
-    setSendingReports(false);
-    submitting.current = false;
+    void Promise.all(reports.map(async item => {
+      let accepted = false;
+      try {
+        accepted = (await item.report?.send()) === true;
+      } catch {
+        // The letter is already generated locally and the email can be retried manually.
+      }
+      return accepted ? null : { label: item.label, href: getEntryReportMailto(item.category, item.entry) };
+    })).then(drafts => {
+      if (request === letterRequest.current) setPendingReportDrafts(drafts.filter(draft => draft !== null));
+    });
     setStep("loading");
     setLoadingMsgIndex(0);
 
@@ -375,6 +381,7 @@ export default function App() {
   };
 
   const handleResetAll = () => {
+    letterRequest.current += 1;
     setFormData({
       recipientName: "",
       gender: "M",
@@ -457,7 +464,7 @@ export default function App() {
 
             {/* Main Form Card (3-Column Desktop Grid for single-screen desktop fit, 1-Column Mobile) */}
             <div className={`${t.cardBg} ${t.cardBorder} ${t.cardShadow} rounded-2xl p-4 sm:p-6 transition-all border`}>
-              <form onSubmit={handleSubmit} className="space-y-5">
+              <form noValidate onSubmit={handleSubmit} className="space-y-5">
                 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   
@@ -656,8 +663,15 @@ export default function App() {
                     </div>
 
                     <div>
-                      <button type="button" disabled={!jobBoards} aria-expanded={showJobBoards && !!jobBoards}
-                        onClick={() => setShowJobBoards(open => !open)}
+                      <button type="button" aria-expanded={showJobBoards && !!jobBoards}
+                        onClick={() => {
+                          if (!jobBoards) {
+                            setError(!job ? "Indica la professione da cercare." : "Indica la zona dove cercare lavoro.");
+                            return;
+                          }
+                          setError(null);
+                          setShowJobBoards(open => !open);
+                        }}
                         className="flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold disabled:opacity-50">
                         <Search className="h-4 w-4" /> Cerca annunci di lavoro
                       </button>
@@ -702,10 +716,9 @@ export default function App() {
                       )}
                       <button
                         type="submit"
-                        disabled={!canGenerate || sendingReports}
                         className={`w-full px-6 py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 group cursor-pointer text-sm disabled:opacity-50 ${t.accentBtn}`}
                       >
-                        {sendingReports ? "Preparazione…" : "Genera Lettera"}
+                        Genera Lettera
                         <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-all" />
                       </button>
                     </div>
@@ -716,7 +729,7 @@ export default function App() {
 
                 {/* Form Error Message */}
                 {error && (
-                  <div className="p-3 bg-red-50 text-red-800 rounded-xl text-xs flex items-start gap-2 border border-red-200">
+                  <div role="alert" className="p-3 bg-red-50 text-red-800 rounded-xl text-xs flex items-start gap-2 border border-red-200">
                     <AlertCircle className="w-4 h-4 shrink-0 text-red-600 mt-0.5" />
                     <div>
                       <p className="font-bold">Attenzione</p>
