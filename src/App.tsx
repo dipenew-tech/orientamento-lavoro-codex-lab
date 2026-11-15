@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { UserFormInputs, GeneratedLetter } from "./types";
 import LetterEditor from "./components/LetterEditor";
-import MissingEntryReport from "./components/MissingEntryReport";
-import { getJobBoardLinks, getJobSearchTerms } from "./lib/jobBoardLinks";
+import MissingEntryReport, { getEntryReportMailto, type EntryReportHandle } from "./components/MissingEntryReport";
+import { formatSelectedJobLinks, getJobBoardLinks, getJobSearchTerms } from "./lib/jobBoardLinks";
 import AdminStatsModal from "./components/AdminStatsModal";
 import { saveLetterStat } from "./lib/statsStore";
 import { generateLocalFallback } from "./lib/fallbackGenerator";
@@ -272,38 +272,81 @@ export default function App() {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const canSearch = !isOtherNationality && !isOtherJob &&
-    Boolean(formData.nationality && formData.jobSought && formData.zoneJobSought.trim());
+  const submitting = useRef(false);
+  const [sendingReports, setSendingReports] = useState(false);
+  const jobReport = useRef<EntryReportHandle>(null);
+  const nationalityReport = useRef<EntryReportHandle>(null);
+  const [pendingReportDrafts, setPendingReportDrafts] = useState<{ label: string; href: string }[]>([]);
+  const job = (isOtherJob ? customJob : formData.jobSought).trim();
+  const nat = (isOtherNationality ? customNationality : formData.nationality).trim();
+  const canGenerate = Boolean(nat && job && formData.zoneResident.trim() && formData.zoneJobSought.trim());
   const [showJobBoards, setShowJobBoards] = useState(false);
   const [jobSearchTerm, setJobSearchTerm] = useState("");
-  const jobSearchTerms = getJobSearchTerms(formData.jobSought);
+  const [openedJobSearch, setOpenedJobSearch] = useState("");
+  const [includeJobLinks, setIncludeJobLinks] = useState(false);
+  const [jobLinksInput, setJobLinksInput] = useState("");
+  const jobSearchTerms = isOtherJob ? [job] : getJobSearchTerms(job);
   const selectedJobTerm = jobSearchTerms.includes(jobSearchTerm) ? jobSearchTerm : jobSearchTerms[0];
-  const jobBoards = canSearch && selectedJobTerm
+  const jobBoards = formData.zoneJobSought.trim() && selectedJobTerm
     ? getJobBoardLinks(selectedJobTerm, formData.zoneJobSought)
     : null;
+  const searchKey = job + "\n" + formData.zoneJobSought.trim();
+  const searchedCurrentSelection = !!jobBoards && openedJobSearch === searchKey;
+  const selectedJobLinks = searchedCurrentSelection && includeJobLinks ? formatSelectedJobLinks(jobLinksInput) : "";
+
+  function markSearchOpened() {
+    if (!searchedCurrentSelection) {
+      setIncludeJobLinks(false);
+      setJobLinksInput("");
+    }
+    setOpenedJobSearch(searchKey);
+    if (isOtherJob) void jobReport.current?.send();
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitting.current) return;
     setError(null);
-    if (!canSearch || !formData.zoneResident.trim()) {
-      setError("Seleziona una nazionalità e una professione dall’elenco e controlla le zone.");
+    if (!canGenerate) {
+      setError("Indica nazionalità, professione e zone.");
       return;
     }
 
+    if (searchedCurrentSelection && includeJobLinks && !selectedJobLinks) {
+      setError("Incolla almeno un link a un singolo annuncio oppure scegli No.");
+      return;
+    }
+
+    submitting.current = true;
+    setSendingReports(true);
+    const reports = [
+      ...(isOtherNationality ? [{ report: nationalityReport.current, category: "nazionalita" as const, entry: nat, label: "Nazionalità" }] : []),
+      ...(isOtherJob ? [{ report: jobReport.current, category: "mestiere" as const, entry: job, label: "Professione" }] : []),
+    ];
+    const outcomes = await Promise.all(reports.map(async item => ({
+      ...item, accepted: await item.report?.send(),
+    })));
+    setPendingReportDrafts(outcomes.filter(item => !item.accepted).map(item => ({
+      label: item.label, href: getEntryReportMailto(item.category, item.entry),
+    })));
+    setSendingReports(false);
+    submitting.current = false;
     setStep("loading");
     setLoadingMsgIndex(0);
-    const job = formData.jobSought;
-    const nat = formData.nationality;
 
     try {
       const payload = {
         ...formData,
         nationality: nat,
-        jobSought: job
+        jobSought: job,
+        italianOnly: isOtherNationality,
+        skipProfessionalMatching: isOtherJob,
       };
 
-      // Generazione locale: nessuna chiamata API e nessun dato inviato a server.
       const data: GeneratedLetter = generateLocalFallback(payload);
+      if (selectedJobLinks) {
+        data.italianLetter.cooperativesIntro += "\n\nANNUNCI SELEZIONATI\n\n" + selectedJobLinks;
+      }
 
       // Save stat record locally as well
       saveLetterStat({
@@ -343,6 +386,10 @@ export default function App() {
     });
     setShowJobBoards(false);
     setJobSearchTerm("");
+    setOpenedJobSearch("");
+    setPendingReportDrafts([]);
+    setIncludeJobLinks(false);
+    setJobLinksInput("");
     setIsOtherJob(false);
     setCustomJob("");
     setIsOtherNationality(false);
@@ -487,7 +534,7 @@ export default function App() {
                             maxLength={120}
                             className={`w-full px-3 py-2 ${t.inputBg} border ${t.inputBorder} ${t.inputFocus} rounded-xl focus:outline-none text-xs font-medium`}
                           />
-                          <MissingEntryReport category="nazionalita" value={customNationality} />
+                          <MissingEntryReport ref={nationalityReport} category="nazionalita" value={customNationality} />
                         </div>
                       )}
 
@@ -566,7 +613,7 @@ export default function App() {
                             maxLength={120}
                             className={`w-full px-3 py-2 ${t.inputBg} border ${t.inputBorder} ${t.inputFocus} rounded-xl focus:outline-none text-xs font-medium`}
                           />
-                          <MissingEntryReport category="mestiere" value={customJob} />
+                          <MissingEntryReport ref={jobReport} category="mestiere" value={customJob} />
                         </div>
                       )}
 
@@ -627,24 +674,38 @@ export default function App() {
                           )}
                           <p>Apri i risultati filtrati sul portale. Per stamparli, premi Ctrl+P (⌘+P su Mac) nella scheda del portale.</p>
                           <div className="flex gap-3">
-                            <a href={jobBoards.indeed} target="_blank" rel="noopener noreferrer" className="font-semibold underline">Risultati Indeed ↗</a>
-                            <a href={jobBoards.subito} target="_blank" rel="noopener noreferrer" className="font-semibold underline">Risultati Subito ↗</a>
+                            <a href={jobBoards.indeed} onClick={markSearchOpened} target="_blank" rel="noopener noreferrer" className="font-semibold underline">Risultati Indeed ↗</a>
+                            <a href={jobBoards.subito} onClick={markSearchOpened} target="_blank" rel="noopener noreferrer" className="font-semibold underline">Risultati Subito ↗</a>
                           </div>
                         </div>
+                      )}
+                      {searchedCurrentSelection && (
+                        <fieldset className="mt-3 space-y-2 text-xs">
+                          <legend className="font-semibold">Aggiungere gli annunci scelti alla lettera?</legend>
+                          <button type="button" aria-pressed={includeJobLinks} className="mr-3 underline" onClick={() => setIncludeJobLinks(true)}>Sì, aggiungi annunci</button>
+                          <button type="button" aria-pressed={!includeJobLinks} className="underline" onClick={() => setIncludeJobLinks(false)}>No</button>
+                          {includeJobLinks && (
+                            <label className="block">
+                              Incolla il link di ogni annuncio su una riga. Puoi scrivere il titolo prima del link.
+                              <textarea rows={4} value={jobLinksInput} onChange={event => setJobLinksInput(event.target.value)}
+                                className={`mt-1 block w-full rounded border p-2 ${t.inputBg}`} />
+                            </label>
+                          )}
+                        </fieldset>
                       )}
                     </div>
 
                     {/* Submit Button inside Col 3 / bottom desktop layout */}
                     <div className="pt-2">
-                      {(isOtherNationality || isOtherJob) && (
-                        <p className="mb-2 text-xs">Per cercare annunci o generare la lettera, seleziona due voci presenti negli elenchi.</p>
+                      {isOtherNationality && (
+                        <p className="mb-2 text-xs">La lettera sarà generata in italiano.</p>
                       )}
                       <button
                         type="submit"
-                        disabled={!canSearch || !formData.zoneResident.trim()}
+                        disabled={!canGenerate || sendingReports}
                         className={`w-full px-6 py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 group cursor-pointer text-sm disabled:opacity-50 ${t.accentBtn}`}
                       >
-                        Genera Lettera
+                        {sendingReports ? "Preparazione…" : "Genera Lettera"}
                         <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-all" />
                       </button>
                     </div>
@@ -666,6 +727,13 @@ export default function App() {
 
               </form>
             </div>
+          </div>
+        )}
+
+        {step === "result" && pendingReportDrafts.length > 0 && (
+          <div role="status" className="mb-3 rounded-xl bg-amber-50 p-3 text-xs text-amber-900">
+            Il servizio email non ha confermato la segnalazione. Puoi inviarla dal tuo programma di posta.
+            {pendingReportDrafts.map(draft => <a key={draft.label} href={draft.href} className="ml-2 underline">Apri bozza · {draft.label}</a>)}
           </div>
         )}
 

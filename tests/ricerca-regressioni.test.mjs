@@ -17,3 +17,18 @@ test("Vietnam non viene tradotto erroneamente in inglese", () => {
   assert.equal(letter.hasTranslation, false);
   assert.equal(letter.translatedLetter, undefined);
 });
+
+
+
+test("Nazionalità libera in italiano, professione libera senza abbinamenti impliciti", () => {
+  const letter = generateLocalFallback({
+    recipientName: "Persona di prova", gender: "F", nationality: "Francia",
+    italianLevel: "Basso", jobSought: "Cuoco", zoneResident: "Ostia", zoneJobSought: "Ostia",
+    italianOnly: true, skipProfessionalMatching: true,
+  });
+  assert.equal(letter.translationLanguage, "Italiano");
+  assert.equal(letter.hasTranslation, false);
+  assert.equal(letter.translatedLetter, undefined);
+  assert.match(letter.italianLetter.intro, /Francia/);
+  assert.deepEqual(letter.cooperatives, []);
+});

@@ -1,4 +1,4 @@
-import { Document, Paragraph, TextRun, Packer, AlignmentType, PageBreak } from "docx";
+import { Document, Paragraph, TextRun, Packer, AlignmentType, PageBreak, ExternalHyperlink } from "docx";
 import { GeneratedLetter } from "../types";
 
 /**
@@ -462,6 +462,16 @@ function addFormattedParagraphs(children: any[], text: string, isItalic = false,
     const trimmed = line.trim();
     if (!trimmed) {
       // Add minor space for blank lines
+      return;
+    }
+
+    if (/^https:\/\/(?:it\.indeed\.com\/viewjob\?jk=|(?:www\.)?subito\.it\/offerte-lavoro\/)[^\s]+$/.test(trimmed)) {
+      children.push(new Paragraph({
+        children: [new ExternalHyperlink({
+          link: trimmed,
+          children: [new TextRun({ text: trimmed, style: "Hyperlink", font: "Arial", size: 21 })],
+        })],
+      }));
       return;
     }
 
@@ -1284,3 +1294,4 @@ export function generateWordDocument(letter: GeneratedLetter): Promise<Blob> {
 
   return Packer.toBlob(doc);
 }
+

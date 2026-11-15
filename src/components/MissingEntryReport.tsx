@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import type { Ref } from "react";
+import { useEffect, useImperativeHandle, useRef, useState } from "react";
 
 type Turnstile = {
   render: (element: HTMLElement, options: Record<string, unknown>) => string;
@@ -8,8 +9,19 @@ type Turnstile = {
 
 const getTurnstile = () => (window as Window & { turnstile?: Turnstile }).turnstile;
 
-export default function MissingEntryReport({ category, value }: {
-  category: "nazionalita" | "mestiere";
+export type EntryReportHandle = { send: () => Promise<boolean> };
+type Category = "nazionalita" | "mestiere";
+
+export function getEntryReportMailto(category: Category, entry: string): string {
+  const label = category === "nazionalita" ? "nazionalità" : "professione";
+  const subject = "[Caritas] Aggiunta al repertorio: " + label;
+  const body = "Ti chiedo di verificare e aggiungere al repertorio questa " + label + ": " + entry;
+  return "mailto:dipenew@gmail.com?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(body);
+}
+
+export default function MissingEntryReport({ category, value, ref }: {
+  category: Category;
+  ref?: Ref<EntryReportHandle>;
   value: string;
 }) {
   const entry = value.trim();
@@ -17,7 +29,7 @@ export default function MissingEntryReport({ category, value }: {
   const siteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY;
   const container = useRef<HTMLDivElement>(null);
   const widget = useRef<string | undefined>(undefined);
-  const sending = useRef(false);
+  const pending = useRef<{ key: string; result: Promise<boolean> } | null>(null);
   const sent = useRef(new Set<string>());
   const [token, setToken] = useState("");
   const [status, setStatus] = useState("");
@@ -62,39 +74,49 @@ export default function MissingEntryReport({ category, value }: {
     };
   }, [hasEntry, endpoint, siteKey]);
 
-  if (!entry) return null;
   const key = entry.toLocaleLowerCase("it");
-  const label = category === "nazionalita" ? "nazionalità" : "professione";
-  const subject = "[Caritas] Aggiunta al repertorio: " + label;
-  const body = "Ti chiedo di verificare e aggiungere al repertorio questa " + label + ": " + entry;
-  const mailto = "mailto:dipenew@gmail.com?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(body);
+  const mailto = getEntryReportMailto(category, entry);
 
-  async function report() {
-    if (!endpoint || !token || sending.current || sent.current.has(key)) return;
-    sending.current = true;
+  function report(): Promise<boolean> {
+    if (sent.current.has(key)) return Promise.resolve(true);
+    if (pending.current) return pending.current.key === key ? pending.current.result : Promise.resolve(false);
+    if (!entry || !endpoint || !token) {
+      setFailed(true);
+      return Promise.resolve(false);
+    }
     setBusy(true);
     setStatus("");
-    try {
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ category, value: entry, turnstileToken: token }),
-        signal: AbortSignal.timeout(15000),
-      });
-      if (!response.ok || (await response.json()).ok !== true) throw new Error();
-      sent.current.add(key);
-      setStatus("Segnalazione accettata dal servizio email.");
-      setFailed(false);
-    } catch {
-      setStatus("Invio automatico non confermato.");
-      setFailed(true);
-    } finally {
-      setBusy(false);
-      sending.current = false;
-      setToken("");
-      if (widget.current) getTurnstile()?.reset(widget.current);
+    const result = send();
+    pending.current = { key, result };
+    return result;
+
+    async function send() {
+      try {
+        const response = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ category, value: entry, turnstileToken: token }),
+          signal: AbortSignal.timeout(6000),
+        });
+        if (!response.ok || (await response.json()).ok !== true) throw new Error();
+        sent.current.add(key);
+        setFailed(false);
+        return true;
+      } catch {
+        setStatus("Invio automatico non confermato.");
+        setFailed(true);
+        return false;
+      } finally {
+        pending.current = null;
+        setBusy(false);
+        setToken("");
+        if (widget.current) getTurnstile()?.reset(widget.current);
+      }
     }
   }
+
+  useImperativeHandle(ref, () => ({ send: report }));
+  if (!entry) return null;
 
   return (
     <div className="mt-2 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-slate-800">

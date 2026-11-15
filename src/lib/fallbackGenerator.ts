@@ -423,6 +423,8 @@ export function generateLocalFallback(inputs: {
   zoneResident: string;
   zoneJobSought: string;
   officinaOpportunity?: boolean;
+  italianOnly?: boolean;
+  skipProfessionalMatching?: boolean;
 }): GeneratedLetter {
   const { recipientName, gender, nationality, italianLevel, jobSought, zoneResident, zoneJobSought, officinaOpportunity } = inputs;
 
@@ -446,7 +448,7 @@ export function generateLocalFallback(inputs: {
     "autista (conducente/fattorino)"
   ];
   const jsLower = jobSought.trim().toLowerCase();
-  const isAltro = jsLower === "altro" || (
+  const isAltro = inputs.skipProfessionalMatching || jsLower === "altro" || (
     !CORE_PROFESSIONS.some(p => 
       p.toLowerCase() === jsLower ||
       jsLower.includes(p.split(" ")[0].toLowerCase()) ||
@@ -455,7 +457,7 @@ export function generateLocalFallback(inputs: {
   );
 
   // 1. Resolve Cooperatives based on jobSought category with high precision from the curated local database
-  let selectedCoops: Cooperative[] = queryLocalDb(jobSought, zoneResident, zoneJobSought);
+  let selectedCoops: Cooperative[] = inputs.skipProfessionalMatching ? [] : queryLocalDb(jobSought, zoneResident, zoneJobSought);
 
 
   // 2. Resolve Public Offices based on zoneResident
@@ -527,7 +529,7 @@ export function generateLocalFallback(inputs: {
   let translatedLetter: LetterSection | undefined = undefined;
   let resolvedLang = "Inglese";
   
-  if (!isItalian) {
+  if (!isItalian && !inputs.italianOnly) {
     let nat = nationality.toLowerCase().trim();
     nat = nat.replace(/^altro\s*:\s*/i, "").replace(/^altro\s*-\s*/i, "").trim();
     let langKey = "english";
@@ -716,7 +718,7 @@ export function generateLocalFallback(inputs: {
     recipientName: recipientName || "Gentile Utente",
     italianLetter,
     hasTranslation: !isItalian && !!translatedLetter,
-    translationLanguage: translatedLetter ? resolvedLang : "Traduzione non disponibile per la lingua richiesta",
+    translationLanguage: inputs.italianOnly ? "Italiano" : translatedLetter ? resolvedLang : "Traduzione non disponibile per la lingua richiesta",
     translatedLetter,
     cooperatives: selectedCoops,
     publicOffices: selectedOffices,
@@ -725,3 +727,4 @@ export function generateLocalFallback(inputs: {
     isLocalFallback: true
   };
 }
+
