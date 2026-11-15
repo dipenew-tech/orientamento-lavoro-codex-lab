@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
-import { UserFormInputs, GeneratedLetter } from "./types";
+import { UserFormInputs, GeneratedLetter, IndeedPrintPage } from "./types";
 import LetterEditor from "./components/LetterEditor";
-import MissingEntryReport, { getEntryReportMailto, type EntryReportHandle } from "./components/MissingEntryReport";
-import { formatSelectedJobLinks, getJobBoardLinks, getJobSearchTerms } from "./lib/jobBoardLinks";
+import MissingEntryReport, { type EntryReportHandle } from "./components/MissingEntryReport";
+import { getIndeedSearchLink, getJobSearchTerms } from "./lib/jobBoardLinks";
 import AdminStatsModal from "./components/AdminStatsModal";
 import { saveLetterStat } from "./lib/statsStore";
+import { readIndeedPrint } from "./lib/indeedPrint";
 import { generateLocalFallback } from "./lib/fallbackGenerator";
 import { 
   Heart, 
@@ -272,10 +273,8 @@ export default function App() {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const letterRequest = useRef(0);
   const jobReport = useRef<EntryReportHandle>(null);
   const nationalityReport = useRef<EntryReportHandle>(null);
-  const [pendingReportDrafts, setPendingReportDrafts] = useState<{ label: string; href: string }[]>([]);
   const job = (isOtherJob ? customJob : formData.jobSought).trim();
   const nat = (isOtherNationality ? customNationality : formData.nationality).trim();
   const missingLetterFields = [
@@ -287,24 +286,34 @@ export default function App() {
   const [showJobBoards, setShowJobBoards] = useState(false);
   const [jobSearchTerm, setJobSearchTerm] = useState("");
   const [openedJobSearch, setOpenedJobSearch] = useState("");
-  const [includeJobLinks, setIncludeJobLinks] = useState(false);
-  const [jobLinksInput, setJobLinksInput] = useState("");
+  const [indeedPrint, setIndeedPrint] = useState<{ key: string; pages: IndeedPrintPage[] }>();
+  const [importingPrint, setImportingPrint] = useState(false);
   const jobSearchTerms = isOtherJob ? [job] : getJobSearchTerms(job);
   const selectedJobTerm = jobSearchTerms.includes(jobSearchTerm) ? jobSearchTerm : jobSearchTerms[0];
-  const jobBoards = formData.zoneJobSought.trim() && selectedJobTerm
-    ? getJobBoardLinks(selectedJobTerm, formData.zoneJobSought)
-    : null;
-  const searchKey = job + "\n" + formData.zoneJobSought.trim();
-  const searchedCurrentSelection = !!jobBoards && openedJobSearch === searchKey;
-  const selectedJobLinks = searchedCurrentSelection && includeJobLinks ? formatSelectedJobLinks(jobLinksInput) : "";
+  const indeedUrl = formData.zoneJobSought.trim() && selectedJobTerm
+    ? getIndeedSearchLink(selectedJobTerm, formData.zoneJobSought)
+    : "";
+  const searchedCurrentSelection = !!indeedUrl && openedJobSearch === indeedUrl;
 
   function markSearchOpened() {
-    if (!searchedCurrentSelection) {
-      setIncludeJobLinks(false);
-      setJobLinksInput("");
-    }
-    setOpenedJobSearch(searchKey);
+    setOpenedJobSearch(indeedUrl);
     if (isOtherJob) void jobReport.current?.send();
+    if (isOtherNationality) void nationalityReport.current?.send();
+  }
+
+  async function importIndeedPrint(file?: File) {
+    if (!file) return;
+    setError(null);
+    setImportingPrint(true);
+    setIndeedPrint(undefined);
+    try {
+      const pages = await readIndeedPrint(file);
+      setIndeedPrint({ key: indeedUrl, pages });
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Impossibile leggere il PDF di Indeed.");
+    } finally {
+      setImportingPrint(false);
+    }
   }
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -315,28 +324,9 @@ export default function App() {
       return;
     }
 
-    if (searchedCurrentSelection && includeJobLinks && !selectedJobLinks) {
-      setError("Incolla almeno un link a un singolo annuncio oppure scegli No.");
-      return;
-    }
-
-    const request = ++letterRequest.current;
-    setPendingReportDrafts([]);
-    const reports = [
-      ...(isOtherNationality ? [{ report: nationalityReport.current, category: "nazionalita" as const, entry: nat, label: "Nazionalità" }] : []),
-      ...(isOtherJob ? [{ report: jobReport.current, category: "mestiere" as const, entry: job, label: "Professione" }] : []),
-    ];
-    void Promise.all(reports.map(async item => {
-      let accepted = false;
-      try {
-        accepted = (await item.report?.send()) === true;
-      } catch {
-        // The letter is already generated locally and the email can be retried manually.
-      }
-      return accepted ? null : { label: item.label, href: getEntryReportMailto(item.category, item.entry) };
-    })).then(drafts => {
-      if (request === letterRequest.current) setPendingReportDrafts(drafts.filter(draft => draft !== null));
-    });
+    if (importingPrint) return;
+    if (isOtherNationality) void nationalityReport.current?.send();
+    if (isOtherJob) void jobReport.current?.send();
     setStep("loading");
     setLoadingMsgIndex(0);
 
@@ -350,9 +340,7 @@ export default function App() {
       };
 
       const data: GeneratedLetter = generateLocalFallback(payload);
-      if (selectedJobLinks) {
-        data.italianLetter.cooperativesIntro += "\n\nANNUNCI SELEZIONATI\n\n" + selectedJobLinks;
-      }
+      if (indeedPrint?.key === indeedUrl) data.indeedPrintPages = indeedPrint.pages;
 
       // Save stat record locally as well
       saveLetterStat({
@@ -381,7 +369,6 @@ export default function App() {
   };
 
   const handleResetAll = () => {
-    letterRequest.current += 1;
     setFormData({
       recipientName: "",
       gender: "M",
@@ -394,9 +381,7 @@ export default function App() {
     setShowJobBoards(false);
     setJobSearchTerm("");
     setOpenedJobSearch("");
-    setPendingReportDrafts([]);
-    setIncludeJobLinks(false);
-    setJobLinksInput("");
+    setIndeedPrint(undefined);
     setIsOtherJob(false);
     setCustomJob("");
     setIsOtherNationality(false);
@@ -663,9 +648,9 @@ export default function App() {
                     </div>
 
                     <div>
-                      <button type="button" aria-expanded={showJobBoards && !!jobBoards}
+                      <button type="button" aria-expanded={showJobBoards && !!indeedUrl}
                         onClick={() => {
-                          if (!jobBoards) {
+                          if (!indeedUrl) {
                             setError(!job ? "Indica la professione da cercare." : "Indica la zona dove cercare lavoro.");
                             return;
                           }
@@ -673,9 +658,9 @@ export default function App() {
                           setShowJobBoards(open => !open);
                         }}
                         className="flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold disabled:opacity-50">
-                        <Search className="h-4 w-4" /> Cerca annunci di lavoro
+                        <Search className="h-4 w-4" /> Cerca annunci su Indeed
                       </button>
-                      {showJobBoards && jobBoards && (
+                      {showJobBoards && indeedUrl && (
                         <div className="mt-2 space-y-2 text-xs">
                           {jobSearchTerms.length > 1 && (
                             <label className="flex items-center gap-2">
@@ -686,26 +671,24 @@ export default function App() {
                               </select>
                             </label>
                           )}
-                          <p>Apri i risultati filtrati sul portale. Per stamparli, premi Ctrl+P (⌘+P su Mac) nella scheda del portale.</p>
-                          <div className="flex gap-3">
-                            <a href={jobBoards.indeed} onClick={markSearchOpened} target="_blank" rel="noopener noreferrer" className="font-semibold underline">Risultati Indeed ↗</a>
-                            <a href={jobBoards.subito} onClick={markSearchOpened} target="_blank" rel="noopener noreferrer" className="font-semibold underline">Risultati Subito ↗</a>
-                          </div>
+                          <a href={indeedUrl} onClick={markSearchOpened} target="_blank" rel="noopener noreferrer" className="font-semibold underline">Apri i risultati Indeed ↗</a>
                         </div>
                       )}
                       {searchedCurrentSelection && (
-                        <fieldset className="mt-3 space-y-2 text-xs">
-                          <legend className="font-semibold">Aggiungere gli annunci scelti alla lettera?</legend>
-                          <button type="button" aria-pressed={includeJobLinks} className="mr-3 underline" onClick={() => setIncludeJobLinks(true)}>Sì, aggiungi annunci</button>
-                          <button type="button" aria-pressed={!includeJobLinks} className="underline" onClick={() => setIncludeJobLinks(false)}>No</button>
-                          {includeJobLinks && (
-                            <label className="block">
-                              Incolla il link di ogni annuncio su una riga. Puoi scrivere il titolo prima del link.
-                              <textarea rows={4} value={jobLinksInput} onChange={event => setJobLinksInput(event.target.value)}
-                                className={`mt-1 block w-full rounded border p-2 ${t.inputBg}`} />
-                            </label>
-                          )}
-                        </fieldset>
+                        <div className="mt-3 space-y-2 text-xs">
+                          <label className="block">
+                            Da Indeed premi Ctrl+P (⌘+P su Mac), salva come PDF, poi seleziona il file qui. Le pagine saranno aggiunte in fondo alla lettera.
+                            <input type="file" accept=".pdf,application/pdf" disabled={importingPrint}
+                              className="mt-2 block max-w-full"
+                              onChange={event => {
+                                const file = event.currentTarget.files?.[0];
+                                event.currentTarget.value = "";
+                                void importIndeedPrint(file);
+                              }} />
+                          </label>
+                          {importingPrint && <p role="status">Lettura del PDF in corso…</p>}
+                          {indeedPrint?.key === indeedUrl && <p role="status">Pagine da aggiungere alla lettera: {indeedPrint.pages.length}</p>}
+                        </div>
                       )}
                     </div>
 
@@ -716,6 +699,7 @@ export default function App() {
                       )}
                       <button
                         type="submit"
+                        disabled={importingPrint}
                         className={`w-full px-6 py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 group cursor-pointer text-sm disabled:opacity-50 ${t.accentBtn}`}
                       >
                         Genera Lettera
@@ -740,13 +724,6 @@ export default function App() {
 
               </form>
             </div>
-          </div>
-        )}
-
-        {step === "result" && pendingReportDrafts.length > 0 && (
-          <div role="status" className="mb-3 rounded-xl bg-amber-50 p-3 text-xs text-amber-900">
-            Il servizio email non ha confermato la segnalazione. Puoi inviarla dal tuo programma di posta.
-            {pendingReportDrafts.map(draft => <a key={draft.label} href={draft.href} className="ml-2 underline">Apri bozza · {draft.label}</a>)}
           </div>
         )}
 

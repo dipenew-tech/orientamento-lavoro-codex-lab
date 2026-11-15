@@ -1,9 +1,9 @@
 # Segnalazioni di voci mancanti — ambiente di prova
 
 ## Stato
-«Altro» permette di inserire una nazionalità o una professione libera. Una nazionalità libera produce una lettera in italiano. Una professione libera si può cercare su Indeed e Subito. Alla ricerca per una professione libera o alla generazione della lettera, l’app tenta la segnalazione delle voci pertinenti con Turnstile. Il pulsante di segnalazione resta disponibile e, in caso di mancata conferma, appare una bozza email.
+«Altro» permette di inserire una nazionalità o una professione libera. Alla ricerca su Indeed o alla generazione della lettera, l’app tenta la segnalazione delle voci libere con Turnstile. La lettera si genera in parallelo alla segnalazione. Una nazionalità libera produce la lettera in italiano.
 
-I risultati si consultano sul portale. Dopo l’apertura della ricerca, il volontario può aggiungere alla lettera i link dei singoli annunci scelti, con un titolo facoltativo per ogni link. Gli annunci selezionati compaiono anche nella stampa della lettera e nel Word.
+Per aggiungere una copia dei risultati, apri Indeed, salva la pagina come PDF dalla stampa del browser e seleziona il file nella scheda. Le pagine vengono elaborate nel browser e entrano alla fine della lettera, anche nella stampa e nel Word.
 
 L'invio automatico a `dipenew@gmail.com` richiede **tre configurazioni manuali**: Google Apps Script, Cloudflare Turnstile e Cloudflare Worker. Non pubblicare il frontend con l'invio attivo prima di aver completato il test end-to-end. I servizi hanno livelli gratuiti e quote, da verificare nell'account prima dell'attivazione.
 
@@ -30,6 +30,6 @@ L'invio automatico a `dipenew@gmail.com` richiede **tre configurazioni manuali**
 
 ## Flusso previsto per il collaudo finale
 - Scegliere «Altro» in uno dei due menu, digitare una voce fittizia e verificare che la professione libera sia ricercabile e che la nazionalità libera generi la lettera in italiano.
-- Completare Turnstile e premere «Invia segnalazione». Verificare la risposta del servizio e la ricezione nella casella amministrativa.
-- Se il servizio risponde con errore, verificare che la bozza contenga solo la voce proposta e la relativa categoria.
+- Avviare una ricerca su Indeed o generare la lettera per tentare la segnalazione. Verificare la risposta del servizio e la ricezione nella casella amministrativa.
+- Se il servizio risponde con errore, verificare che la lettera venga generata comunque.
 - Selezionare voci presenti nei menu. Verificare i valori iniziali Ostia, l'apertura delle ricerche e la stampa dal browser.

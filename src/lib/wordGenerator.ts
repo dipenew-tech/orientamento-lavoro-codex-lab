@@ -1,4 +1,5 @@
-import { Document, Paragraph, TextRun, Packer, AlignmentType, PageBreak, ExternalHyperlink } from "docx";
+import { INDEED_RESULTS_HEADING } from "./indeedPrint";
+import { Document, Paragraph, TextRun, Packer, AlignmentType, PageBreak, ImageRun } from "docx";
 import { GeneratedLetter } from "../types";
 
 /**
@@ -462,16 +463,6 @@ function addFormattedParagraphs(children: any[], text: string, isItalic = false,
     const trimmed = line.trim();
     if (!trimmed) {
       // Add minor space for blank lines
-      return;
-    }
-
-    if (/^https:\/\/(?:it\.indeed\.com\/viewjob\?jk=|(?:www\.)?subito\.it\/offerte-lavoro\/)[^\s]+$/.test(trimmed)) {
-      children.push(new Paragraph({
-        children: [new ExternalHyperlink({
-          link: trimmed,
-          children: [new TextRun({ text: trimmed, style: "Hyperlink", font: "Arial", size: 21 })],
-        })],
-      }));
       return;
     }
 
@@ -1273,6 +1264,25 @@ export function generateWordDocument(letter: GeneratedLetter): Promise<Blob> {
       ],
     })
   );
+
+  for (const [index, page] of (letter.indeedPrintPages ?? []).entries()) {
+    const scale = Math.min(590 / page.width, 790 / page.height);
+    if (index === 0) {
+      children.push(new Paragraph({
+        pageBreakBefore: true,
+        spacing: { after: 180 },
+        children: [new TextRun({ text: INDEED_RESULTS_HEADING, font: "Arial", bold: true, size: 24 })],
+      }));
+    }
+    children.push(new Paragraph({
+      pageBreakBefore: index > 0,
+      alignment: AlignmentType.CENTER,
+      children: [new ImageRun({
+        type: "png", data: page.image,
+        transformation: { width: Math.floor(page.width * scale), height: Math.floor(page.height * scale) },
+      })],
+    }));
+  }
 
   const doc = new Document({
     sections: [

@@ -42,7 +42,14 @@ export interface LetterSection {
   conclusion: string;
 }
 
+export interface IndeedPrintPage {
+  image: string;
+  width: number;
+  height: number;
+}
+
 export interface GeneratedLetter {
+  indeedPrintPages?: IndeedPrintPage[];
   letterTitle: string;
   subject: string;
   recipientName: string;
@@ -100,4 +107,5 @@ export interface LetterStatRecord {
   schoolsCount: number;
   isLocalFallback?: boolean;
 }
+
 
