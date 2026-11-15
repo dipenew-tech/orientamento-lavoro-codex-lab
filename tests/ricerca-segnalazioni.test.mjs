@@ -1,35 +1,39 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-const component = readFileSync("src/components/NewEntryLookup.tsx", "utf8");
+import { getJobBoardLinks, getJobSearchTerms } from "../src/lib/jobBoardLinks.ts";
+
+const report = readFileSync("src/components/MissingEntryReport.tsx", "utf8");
 const worker = readFileSync("integrations/cloudflare/report-worker.ts", "utf8");
 const app = readFileSync("src/App.tsx", "utf8");
-test("Ricerca Wikidata esplicita con URL fonte e senza dati personali", () => {
-  assert.match(component, /wbsearchentities/);
-  assert.match(component, /Cerca anche sul web/);
-  assert.ok(component.includes("www.wikidata.org/wiki"));
-  assert.doesNotMatch(component, /recipientName/);
+
+test("Altro permette solo la segnalazione, senza ricerca", () => {
+  assert.doesNotMatch(report + app, /Wikidata|NewEntryLookup|resolveNewEntry/);
+  for (const category of ["mestiere", "nazionalita"]) {
+    assert.match(app, new RegExp('MissingEntryReport category="' + category + '"'));
+  }
+  assert.match(app, /if \(!canSearch \|\| !formData\.zoneResident\.trim\(\)\)/);
+  assert.match(app, /const canSearch = !isOtherNationality && !isOtherJob/);
 });
-test("Nuove voci integrate per le tre categorie", () => {
-  for (const category of ["mestiere", "nazionalita", "quartiere"]) assert.match(app, new RegExp('category="'+category+'"'));
-});
-test("Invio protetto da Turnstile e segreti nel Worker", () => {
-  assert.match(worker, /TURNSTILE_SECRET/);
-  assert.match(worker, /REPORT_SECRET/);
+
+test("La segnalazione usa Turnstile e trasmette solo categoria e voce", () => {
   assert.match(worker, /siteverify/);
-  assert.doesNotMatch(component, /REPORT_SECRET/);
+  assert.match(worker, /REPORT_SECRET/);
+  assert.match(report, /JSON\.stringify\(\{ category, value: entry, turnstileToken: token \}\)/);
+  assert.doesNotMatch(report, /REPORT_SECRET|recipientName/);
+  assert.match(report, /mailto:dipenew@gmail\.com/);
 });
 
-test("Selezione Wikidata distinta da apertura fonte", () => {
-  assert.match(component, /Conferma questa voce/);
-  assert.match(component, /setSelectedUrl\(item.url\)/);
-  assert.match(component, /onChoose\?\.\(item.label\)/);
-  assert.match(component, /target="_blank"/);
-});
-
-test("Segnalazione automatica soltanto dopo conferma e senza dati assistito", () => {
-  assert.match(component, /confirmedChoice && selectedUrl && turnstileToken/);
-  assert.match(component, /sentKeys\.current\.has\(key\)/);
-  assert.match(component, /receipt\.ok !== true/);
-  assert.doesNotMatch(component, /recipientName/);
+test("I portali ricevono professione e zona e Subito apre solo le offerte", () => {
+  assert.deepEqual(getJobSearchTerms("Colf/pulizie (servizi domestici)"), ["Colf", "pulizie"]);
+  const [term] = getJobSearchTerms("Badante (assistenza anziani)");
+  const links = getJobBoardLinks(term, " Ostia ");
+  const indeed = new URL(links.indeed);
+  const subito = new URL(links.subito);
+  assert.equal(indeed.origin, "https://it.indeed.com");
+  assert.equal(indeed.searchParams.get("q"), "Badante");
+  assert.equal(indeed.searchParams.get("l"), "Ostia");
+  assert.match(subito.pathname, /offerte-lavoro/);
+  assert.equal(subito.searchParams.get("q"), "Badante Ostia");
+  assert.equal(new URL(getJobBoardLinks("Cuoco", "Tutta Roma").subito).searchParams.get("q"), "Cuoco");
 });

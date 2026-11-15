@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { UserFormInputs, GeneratedLetter } from "./types";
 import LetterEditor from "./components/LetterEditor";
-import NewEntryLookup from "./components/NewEntryLookup";
+import MissingEntryReport from "./components/MissingEntryReport";
+import { getJobBoardLinks, getJobSearchTerms } from "./lib/jobBoardLinks";
 import AdminStatsModal from "./components/AdminStatsModal";
 import { saveLetterStat } from "./lib/statsStore";
 import { generateLocalFallback } from "./lib/fallbackGenerator";
@@ -17,10 +18,6 @@ import {
   Loader2,
   Building2,
   Phone,
-  Check,
-  Globe,
-  Info,
-  X,
   BarChart3,
   Lock,
   Download
@@ -51,8 +48,6 @@ const THEMES: Record<ThemeOption, {
   bannerBg: string;
   bannerBorder: string;
   bannerTitleText: string;
-  officinaBoxBg: string;
-  officinaBoxBorder: string;
   labelColor: string;
   sectionTitleColor: string;
 }> = {
@@ -79,8 +74,6 @@ const THEMES: Record<ThemeOption, {
     bannerBg: "bg-white",
     bannerBorder: "border-slate-200/80",
     bannerTitleText: "text-slate-900",
-    officinaBoxBg: "bg-blue-50/60",
-    officinaBoxBorder: "border-blue-200/60",
     labelColor: "text-slate-700 font-semibold",
     sectionTitleColor: "text-slate-500 font-semibold",
   },
@@ -107,8 +100,6 @@ const THEMES: Record<ThemeOption, {
     bannerBg: "bg-slate-900 text-slate-100 border-l-4 border-l-amber-500",
     bannerBorder: "border-slate-800",
     bannerTitleText: "text-amber-400 font-serif",
-    officinaBoxBg: "bg-slate-200/80",
-    officinaBoxBorder: "border-slate-300",
     labelColor: "text-slate-800 font-bold",
     sectionTitleColor: "text-slate-600 font-bold",
   },
@@ -135,8 +126,6 @@ const THEMES: Record<ThemeOption, {
     bannerBg: "bg-slate-900/90 text-indigo-100 border-t border-indigo-500/30",
     bannerBorder: "border-indigo-900/60",
     bannerTitleText: "text-transparent bg-clip-text bg-gradient-to-r from-violet-300 to-cyan-300 font-bold",
-    officinaBoxBg: "bg-indigo-950/50",
-    officinaBoxBorder: "border-indigo-800/60 text-indigo-200",
     labelColor: "text-indigo-200 font-medium",
     sectionTitleColor: "text-indigo-400 font-semibold",
   },
@@ -163,8 +152,6 @@ const THEMES: Record<ThemeOption, {
     bannerBg: "bg-amber-50/80 text-amber-950 border-l-4 border-l-[#b91c1c]",
     bannerBorder: "border-amber-200/80",
     bannerTitleText: "text-[#b91c1c] font-bold",
-    officinaBoxBg: "bg-red-50/70",
-    officinaBoxBorder: "border-red-200",
     labelColor: "text-neutral-800 font-semibold",
     sectionTitleColor: "text-red-700 font-bold",
   }
@@ -245,9 +232,8 @@ export default function App() {
     nationality: "",
     italianLevel: "Basso",
     jobSought: "",
-    zoneResident: "",
-    zoneJobSought: "",
-    officinaOpportunity: false
+    zoneResident: "Ostia",
+    zoneJobSought: "Ostia"
   });
 
   // Custom "Other" job field
@@ -257,9 +243,6 @@ export default function App() {
   // Custom "Other" nationality field
   const [isOtherNationality, setIsOtherNationality] = useState(false);
   const [customNationality, setCustomNationality] = useState("");
-
-  // Modal notice state when "Altro" is selected
-  const [noticeModal, setNoticeModal] = useState<"nationality" | "job" | null>(null);
 
   // Graphic theme selection state
   const [currentTheme, setCurrentTheme] = useState<ThemeOption>("classic");
@@ -289,63 +272,28 @@ export default function App() {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleLocalFallback = (reason?: string) => {
-    setError(null);
-    setStep("loading");
-    setLoadingMsgIndex(0);
-    
-    // Tiny delay to make it feel professional
-    setTimeout(() => {
-      try {
-        const job = isOtherJob ? customJob : formData.jobSought;
-        const nat = isOtherNationality ? (customNationality ? `Altro: ${customNationality}` : "Altro") : formData.nationality;
-        const fallbackData = generateLocalFallback({
-          ...formData,
-          nationality: nat,
-          jobSought: job
-        });
-        fallbackData.fallbackReason = reason;
-
-        // Save stat record locally and sync
-        saveLetterStat({
-          recipientName: formData.recipientName || "Anonimo",
-          gender: formData.gender || "M",
-          nationality: nat,
-          italianLevel: formData.italianLevel,
-          jobSought: job,
-          zoneResident: formData.zoneResident,
-          zoneJobSought: formData.zoneJobSought,
-          translationLanguage: fallbackData.translationLanguage || "Italiano",
-          officinaOpportunity: !!formData.officinaOpportunity,
-          cooperativesCount: fallbackData.cooperatives ? fallbackData.cooperatives.length : 0,
-          publicOfficesCount: fallbackData.publicOffices ? fallbackData.publicOffices.length : 0,
-          schoolsCount: fallbackData.italianSchools ? fallbackData.italianSchools.length : 0,
-          isLocalFallback: true
-        });
-
-        setGeneratedLetter(fallbackData);
-        setStep("result");
-      } catch (err: any) {
-        setError("Errore durante la generazione d'emergenza locale.");
-        setStep("error");
-      }
-    }, 1200);
-  };
+  const canSearch = !isOtherNationality && !isOtherJob &&
+    Boolean(formData.nationality && formData.jobSought && formData.zoneJobSought.trim());
+  const [showJobBoards, setShowJobBoards] = useState(false);
+  const [jobSearchTerm, setJobSearchTerm] = useState("");
+  const jobSearchTerms = getJobSearchTerms(formData.jobSought);
+  const selectedJobTerm = jobSearchTerms.includes(jobSearchTerm) ? jobSearchTerm : jobSearchTerms[0];
+  const jobBoards = canSearch && selectedJobTerm
+    ? getJobBoardLinks(selectedJobTerm, formData.zoneJobSought)
+    : null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setStep("loading");
-    setLoadingMsgIndex(0);
-
-    const job = isOtherJob ? customJob : formData.jobSought;
-    const nat = isOtherNationality ? (customNationality ? `Altro: ${customNationality}` : "Altro") : formData.nationality;
-
-    if (!nat || (isOtherNationality && !customNationality) || !job || !formData.zoneResident || !formData.zoneJobSought) {
-      setError("Per favore, compila tutti i campi obbligatori della scheda di ascolto.");
-      setStep("form");
+    if (!canSearch || !formData.zoneResident.trim()) {
+      setError("Seleziona una nazionalità e una professione dall’elenco e controlla le zone.");
       return;
     }
+
+    setStep("loading");
+    setLoadingMsgIndex(0);
+    const job = formData.jobSought;
+    const nat = formData.nationality;
 
     try {
       const payload = {
@@ -367,7 +315,7 @@ export default function App() {
         zoneResident: formData.zoneResident,
         zoneJobSought: formData.zoneJobSought,
         translationLanguage: data.translationLanguage || "Italiano",
-        officinaOpportunity: !!formData.officinaOpportunity,
+        officinaOpportunity: false,
         cooperativesCount: data.cooperatives ? data.cooperatives.length : 0,
         publicOfficesCount: data.publicOffices ? data.publicOffices.length : 0,
         schoolsCount: data.italianSchools ? data.italianSchools.length : 0,
@@ -390,10 +338,11 @@ export default function App() {
       nationality: "",
       italianLevel: "Basso",
       jobSought: "",
-      zoneResident: "",
-      zoneJobSought: "",
-      officinaOpportunity: false
+      zoneResident: "Ostia",
+      zoneJobSought: "Ostia"
     });
+    setShowJobBoards(false);
+    setJobSearchTerm("");
     setIsOtherJob(false);
     setCustomJob("");
     setIsOtherNationality(false);
@@ -535,15 +484,10 @@ export default function App() {
                             placeholder="Es: Vietnam, Messico..."
                             value={customNationality}
                             onChange={(e) => setCustomNationality(e.target.value)}
-                            onBlur={() => {
-                              if (customNationality.trim().length > 0) {
-                                setNoticeModal("nationality");
-                              }
-                            }}
+                            maxLength={120}
                             className={`w-full px-3 py-2 ${t.inputBg} border ${t.inputBorder} ${t.inputFocus} rounded-xl focus:outline-none text-xs font-medium`}
                           />
-{/(vietnam|viet nam)/i.test(customNationality) && <p role="alert" className="text-sm text-amber-800">La traduzione vietnamita non è ancora disponibile nel generatore locale: verrà prodotta la lettera in italiano, senza una falsa traduzione inglese.</p>}
-<NewEntryLookup category="nazionalita" value={customNationality} onChoose={setCustomNationality} existingValues={NATIONALITIES_LIST} />
+                          <MissingEntryReport category="nazionalita" value={customNationality} />
                         </div>
                       )}
 
@@ -619,35 +563,13 @@ export default function App() {
                             placeholder="Es: Idraulico, Autista, Parrucchiere..."
                             value={customJob}
                             onChange={(e) => setCustomJob(e.target.value)}
-                            onBlur={() => {
-                              if (customJob.trim().length > 0) {
-                                setNoticeModal("job");
-                              }
-                            }}
+                            maxLength={120}
                             className={`w-full px-3 py-2 ${t.inputBg} border ${t.inputBorder} ${t.inputFocus} rounded-xl focus:outline-none text-xs font-medium`}
                           />
-<NewEntryLookup category="mestiere" value={customJob} onChoose={setCustomJob} existingValues={["Badante (assistenza anziani)", "Colf/pulizie (servizi domestici)", "Facchino/magazziniere", "Lavapiatti/aiuto cucina", "Pizzaiolo", "Cuoco", "Muratore/Operaio edile", "Custode/portiere", "Cameriere/barista", "Giardiniere", "Segreteria (assistenza d’ufficio/reception)", "Autista (conducente/fattorino)"]} />
+                          <MissingEntryReport category="mestiere" value={customJob} />
                         </div>
                       )}
 
-                      {/* Checkbox Opportunità Officina */}
-                      <div className={`mt-2 flex items-start gap-2.5 ${t.officinaBoxBg} p-3 rounded-xl border ${t.officinaBoxBorder}`}>
-                        <input
-                          type="checkbox"
-                          id="officinaOpportunity"
-                          checked={formData.officinaOpportunity || false}
-                          onChange={(e) => handleInputChange("officinaOpportunity", e.target.checked)}
-                          className="w-4 h-4 mt-0.5 text-blue-700 border-neutral-300 rounded cursor-pointer shrink-0"
-                        />
-                        <div className="space-y-0.5">
-                          <label htmlFor="officinaOpportunity" className={`text-xs font-bold cursor-pointer select-none ${t.labelColor}`}>
-                            opportunità Officina
-                          </label>
-                          <p className="text-[11px] opacity-80 font-medium">
-                            clicca qui se hai candidato la persona ad un'offerta dell'OdO
-                          </p>
-                        </div>
-                      </div>
                     </div>
                   </div>
 
@@ -669,7 +591,6 @@ export default function App() {
                           onChange={(e) => handleInputChange("zoneResident", e.target.value)}
                           className={`w-full px-3 py-2 ${t.inputBg} border ${t.inputBorder} ${t.inputFocus} rounded-xl focus:outline-none text-xs font-medium`}
                         />
-<NewEntryLookup category="quartiere" value={formData.zoneResident} onChoose={(zone) => setFormData(prev => ({...prev, zoneResident: zone}))} />
                         <p className="text-[10px] opacity-60 mt-0.5">Identifica CPI e Scuole di Italiano più vicine.</p>
                       </div>
 
@@ -687,11 +608,41 @@ export default function App() {
                       </div>
                     </div>
 
+                    <div>
+                      <button type="button" disabled={!jobBoards} aria-expanded={showJobBoards && !!jobBoards}
+                        onClick={() => setShowJobBoards(open => !open)}
+                        className="flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold disabled:opacity-50">
+                        <Search className="h-4 w-4" /> Cerca annunci di lavoro
+                      </button>
+                      {showJobBoards && jobBoards && (
+                        <div className="mt-2 space-y-2 text-xs">
+                          {jobSearchTerms.length > 1 && (
+                            <label className="flex items-center gap-2">
+                              Cerca come
+                              <select value={selectedJobTerm} onChange={event => setJobSearchTerm(event.target.value)}
+                                className={`rounded border px-2 py-1 ${t.inputBg}`}>
+                                {jobSearchTerms.map(term => <option key={term}>{term}</option>)}
+                              </select>
+                            </label>
+                          )}
+                          <p>Apri i risultati filtrati sul portale. Per stamparli, premi Ctrl+P (⌘+P su Mac) nella scheda del portale.</p>
+                          <div className="flex gap-3">
+                            <a href={jobBoards.indeed} target="_blank" rel="noopener noreferrer" className="font-semibold underline">Risultati Indeed ↗</a>
+                            <a href={jobBoards.subito} target="_blank" rel="noopener noreferrer" className="font-semibold underline">Risultati Subito ↗</a>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
                     {/* Submit Button inside Col 3 / bottom desktop layout */}
                     <div className="pt-2">
+                      {(isOtherNationality || isOtherJob) && (
+                        <p className="mb-2 text-xs">Per cercare annunci o generare la lettera, seleziona due voci presenti negli elenchi.</p>
+                      )}
                       <button
                         type="submit"
-                        className={`w-full px-6 py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 group cursor-pointer text-sm ${t.accentBtn}`}
+                        disabled={!canSearch || !formData.zoneResident.trim()}
+                        className={`w-full px-6 py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 group cursor-pointer text-sm disabled:opacity-50 ${t.accentBtn}`}
                       >
                         Genera Lettera
                         <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-all" />
@@ -774,97 +725,6 @@ export default function App() {
               >
                 Modifica Dati Inseriti
               </button>
-              <button
-                onClick={handleLocalFallback}
-                className={`px-5 py-2.5 ${t.accentBtn} rounded-xl font-bold text-xs transition-all shadow-md cursor-pointer`}
-              >
-                Usa Generazione Locale d'Emergenza
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* NOTICE MODAL POPUP FOR 'ALTRO' (NATIONALITY / JOB) */}
-        {noticeModal && (
-          <div className="fixed inset-0 bg-neutral-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn">
-            <div className="bg-white text-neutral-900 rounded-2xl max-w-md w-full p-6 shadow-2xl border border-neutral-100 space-y-4 relative animate-scaleUp">
-              <button 
-                onClick={() => setNoticeModal(null)}
-                className="absolute top-4 right-4 text-neutral-400 hover:text-neutral-600 p-1.5 rounded-xl hover:bg-neutral-100 transition-colors cursor-pointer"
-                title="Chiudi"
-              >
-                <X className="w-5 h-5" />
-              </button>
-
-              {noticeModal === "nationality" ? (
-                <>
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 border border-amber-200/60">
-                      <Globe className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-neutral-900 text-base">Informativa Nazionalità e Traduzione</h3>
-                      <p className="text-xs text-amber-700 font-medium">
-                        {customNationality ? `Nazionalità inserita: "${customNationality}"` : "Nazionalità non presente nell'elenco standard"}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="bg-amber-50/50 border border-amber-200/50 rounded-xl p-4 space-y-2.5 text-xs text-neutral-700 leading-relaxed">
-                    <p className="flex items-start gap-2">
-                      <span className="font-bold text-amber-800 shrink-0">•</span>
-                      <span>
-                        È stata predisposta una <strong>segnalazione automatica via e-mail all'amministratore dell'applicazione</strong> per richiedere l'aggiunta di questa lingua al database dell'applicazione.
-                      </span>
-                    </p>
-                    <p className="flex items-start gap-2">
-                      <span className="font-bold text-amber-800 shrink-0">•</span>
-                      <span>
-                        Nel frattempo, la lettera informativa verrà <strong>tradotta automaticamente in Inglese</strong> per permettere comunque un orientamento efficace all'utente.
-                      </span>
-                    </p>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center shrink-0 border border-blue-200/60">
-                      <Briefcase className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-neutral-900 text-base">Informativa Professione Personalizzata</h3>
-                      <p className="text-xs text-blue-700 font-medium">
-                        {customJob ? `Ruolo inserito: "${customJob}"` : "Ruolo non presente nelle professioni standard"}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="bg-blue-50/50 border border-blue-200/50 rounded-xl p-4 space-y-2.5 text-xs text-neutral-700 leading-relaxed">
-                    <p className="flex items-start gap-2">
-                      <span className="font-bold text-blue-800 shrink-0">•</span>
-                      <span>
-                        È stata inviata una <strong>richiesta via e-mail all'amministratore dell'applicazione</strong> per valutare l'inserimento di questa professione e delle relative cooperative specifiche.
-                      </span>
-                    </p>
-                    <p className="flex items-start gap-2">
-                      <span className="font-bold text-blue-800 shrink-0">•</span>
-                      <span>
-                        Nel frattempo, verranno fornite nella lettera le <strong>indicazioni orientative generali</strong>, i Centri per l'Impiego, COL e i contatti territoriali utili per la ricerca.
-                      </span>
-                    </p>
-                  </div>
-                </>
-              )}
-
-              <div className="pt-2 flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => setNoticeModal(null)}
-                  className="w-full sm:w-auto px-6 py-2.5 bg-neutral-900 hover:bg-neutral-800 text-white font-medium text-xs rounded-xl transition-all shadow-sm cursor-pointer"
-                >
-                  Ho capito
-                </button>
-              </div>
             </div>
           </div>
         )}
