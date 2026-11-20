@@ -431,6 +431,10 @@ export default function App() {
       <main className="flex-1 max-w-6xl w-full mx-auto p-3 sm:p-4 md:p-6 flex flex-col justify-center">
         
         {/* STEP 1: FORM */}
+        <div className="sr-only" aria-hidden="true">
+          <MissingEntryReport ref={nationalityReport} category="nazionalita" value={isOtherNationality ? customNationality : ""} />
+          <MissingEntryReport ref={jobReport} category="mestiere" value={isOtherJob ? customJob : ""} />
+        </div>
         {step === "form" && (
           <div className="space-y-4 max-w-6xl mx-auto w-full">
             
@@ -526,7 +530,7 @@ export default function App() {
                             maxLength={120}
                             className={`w-full px-3 py-2 ${t.inputBg} border ${t.inputBorder} ${t.inputFocus} rounded-xl focus:outline-none text-xs font-medium`}
                           />
-                          <MissingEntryReport ref={nationalityReport} category="nazionalita" value={customNationality} />
+
                         </div>
                       )}
 
@@ -605,7 +609,7 @@ export default function App() {
                             maxLength={120}
                             className={`w-full px-3 py-2 ${t.inputBg} border ${t.inputBorder} ${t.inputFocus} rounded-xl focus:outline-none text-xs font-medium`}
                           />
-                          <MissingEntryReport ref={jobReport} category="mestiere" value={customJob} />
+
                         </div>
                       )}
 
