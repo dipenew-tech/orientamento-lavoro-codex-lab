@@ -24,6 +24,7 @@ export default function MissingEntryReport({ category, value, ref }: {
   const widget = useRef<string | undefined>(undefined);
   const pending = useRef<{ key: string; result: Promise<boolean> } | null>(null);
   const sent = useRef(new Set<string>());
+  const requested = useRef<string | null>(null);
   const [token, setToken] = useState("");
   const hasEntry = Boolean(entry);
 
@@ -62,10 +63,19 @@ export default function MissingEntryReport({ category, value, ref }: {
 
   const key = entry.toLocaleLowerCase("it");
 
+  useEffect(() => {
+    if (token && requested.current === key) void report();
+  }, [token, key]);
+
   function report(): Promise<boolean> {
     if (sent.current.has(key)) return Promise.resolve(true);
     if (pending.current) return pending.current.key === key ? pending.current.result : Promise.resolve(false);
-    if (!entry || !endpoint || !token) return Promise.resolve(false);
+    if (!entry || !endpoint) return Promise.resolve(false);
+    if (!token) {
+      requested.current = key;
+      return Promise.resolve(false);
+    }
+    requested.current = null;
     const result = send();
     pending.current = { key, result };
     return result;
@@ -82,11 +92,11 @@ export default function MissingEntryReport({ category, value, ref }: {
         sent.current.add(key);
         return true;
       } catch {
-        setToken("");
         return false;
       } finally {
         pending.current = null;
         setToken("");
+        // Reset only after an attempted send; never auto-retry a failed request.
         if (widget.current) getTurnstile()?.reset(widget.current);
       }
     }
