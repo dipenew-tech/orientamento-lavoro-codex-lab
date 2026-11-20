@@ -26,10 +26,13 @@ export default function MissingEntryReport({ category, value, ref }: {
   const sent = useRef(new Set<string>());
   const requested = useRef<string | null>(null);
   const [token, setToken] = useState("");
+  const [status, setStatus] = useState<"idle" | "waiting" | "sending" | "sent" | "failed">("idle");
+  const [challengeError, setChallengeError] = useState(false);
   const hasEntry = Boolean(entry);
 
   useEffect(() => {
     setToken("");
+    setChallengeError(false);
     if (!hasEntry || !siteKey || !endpoint) return;
     if (!document.querySelector("script[data-caritas-turnstile]")) {
       const script = document.createElement("script");
@@ -47,11 +50,12 @@ export default function MissingEntryReport({ category, value, ref }: {
           sitekey: siteKey,
           callback: setToken,
           "expired-callback": () => setToken(""),
-          appearance: "interaction-only",
-          "error-callback": () => setToken(""),
+          appearance: "always",
+          "error-callback": () => { setToken(""); setChallengeError(true); },
         });
       } catch {
         setToken("");
+        setChallengeError(true);
       }
     }, 200);
     return () => {
@@ -73,9 +77,11 @@ export default function MissingEntryReport({ category, value, ref }: {
     if (!entry || !endpoint) return Promise.resolve(false);
     if (!token) {
       requested.current = key;
+      setStatus("waiting");
       return Promise.resolve(false);
     }
     requested.current = null;
+    setStatus("sending");
     const result = send();
     pending.current = { key, result };
     return result;
@@ -90,8 +96,10 @@ export default function MissingEntryReport({ category, value, ref }: {
         });
         if (!response.ok || (await response.json()).ok !== true) throw new Error();
         sent.current.add(key);
+        setStatus("sent");
         return true;
       } catch {
+        setStatus("failed");
         return false;
       } finally {
         pending.current = null;
@@ -103,5 +111,14 @@ export default function MissingEntryReport({ category, value, ref }: {
   }
 
   useImperativeHandle(ref, () => ({ send: report }));
-  return hasEntry && endpoint && siteKey ? <div ref={container} /> : null;
+  return hasEntry && endpoint && siteKey ? (
+    <div className="rounded-lg bg-white p-2 text-xs text-slate-800 shadow-md" role="status">
+      <div ref={container} />
+      {status === "waiting" && <p>Verifica di sicurezza in attesa: completa il controllo qui sopra per inviare la segnalazione.</p>}
+      {status === "sending" && <p>Invio della segnalazione in corso…</p>}
+      {status === "sent" && <p>Segnalazione inviata.</p>}
+      {status === "failed" && <p>Segnalazione non inviata. La lettera resta disponibile.</p>}
+      {challengeError && <p>Verifica di sicurezza non disponibile: controlla la connessione o le impostazioni Turnstile.</p>}
+    </div>
+  ) : null;
 }
