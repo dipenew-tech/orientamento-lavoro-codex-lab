@@ -1,3 +1,4 @@
+import { INDEED_RESULTS_HEADING } from "../lib/indeedPrint";
 import React, { useState } from "react";
 import { GeneratedLetter, Cooperative, PublicOffice, ItalianSchool } from "../types";
 import { generateWordDocument, getUsefulSitesAndApps } from "../lib/wordGenerator";
@@ -1091,6 +1092,17 @@ export default function LetterEditor({ initialLetter, onReset }: LetterEditorPro
                     SOL Roma Servizio Orientamento Lavoro • Documento Rilasciato il {new Date().toLocaleDateString("it-IT")}
                   </div>
 
+                  {letter.indeedPrintPages?.map((page, index) => (
+                    <React.Fragment key={index}>
+                      <div className="print-page-break" />
+                      <section className="mt-5 print-avoid-break">
+                      {index === 0 && <h2 className="mb-3 text-base font-semibold">{INDEED_RESULTS_HEADING}</h2>}
+                      <img src={page.image} alt={`Risultati Indeed, pagina ${index + 1}`}
+                        className="block mx-auto max-w-full object-contain" style={{ maxHeight: "225mm" }} />
+                      </section>
+                    </React.Fragment>
+                  ))}
+
                 </div>
               </div>
             </div>
@@ -1827,3 +1839,4 @@ export default function LetterEditor({ initialLetter, onReset }: LetterEditorPro
     </div>
   );
 }
+

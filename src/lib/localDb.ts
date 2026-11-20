@@ -42,7 +42,7 @@ export interface ItalianSchool {
 }
 
 export function getMunicipioFromZone(zone: string): string {
-  if (!zone) return "Municipio I";
+  if (!zone) return "";
   const z = zone.toLowerCase().trim();
 
   if (/\bmunicipio\s*(15|xv)\b/i.test(z)) return "Municipio XV";
@@ -107,7 +107,7 @@ export function getMunicipioFromZone(zone: string): string {
     return "Municipio I";
   }
 
-  return "Municipio I";
+  return "";
 }
 
 // Municipal routing groups; see per-record sourceUrls and verificationNote.
@@ -948,14 +948,14 @@ export function saveCustomItalianSchool(school: ItalianSchool) {
 
 export function getPublicOfficesForZone(zone: string): PublicOffice[] {
   const mun = getMunicipioFromZone(zone);
-  const baseList = (municipioOffices[mun] || municipioOffices["Municipio I"]).filter(item => item.automaticMatching !== false);
+  const baseList = (municipioOffices[mun] || []).filter(item => item.automaticMatching !== false);
   const customList = getCustomPublicOffices().filter(o => !o.municipio || o.municipio === mun);
   return [...customList, ...baseList].slice(0, 2);
 }
 
 export function getItalianSchoolsForZone(zone: string): ItalianSchool[] {
   const mun = getMunicipioFromZone(zone);
-  const baseList = (municipioSchools[mun] || municipioSchools["Municipio I"] || []).filter(item => item.automaticMatching !== false);
+  const baseList = (municipioSchools[mun] || []).filter(item => item.automaticMatching !== false);
   const customList = getCustomItalianSchools().filter(s => !s.municipio || s.municipio === mun);
   return [...customList, ...baseList].slice(0, 3);
 }
@@ -2835,19 +2835,13 @@ export function queryLocalDb(jobSought: string, zoneResident: string, zoneJobSou
   const munOnly = baseList.filter(item => item.municipio === targetMun && !hasKeyword(item));
   const otherMunKeyword = baseList.filter(item => item.municipio !== targetMun && hasKeyword(item));
   
-  const remainingInland = baseList.filter(item => item.municipio !== targetMun && item.municipio !== "Municipio X" && !hasKeyword(item));
-  const remainingOstia = baseList.filter(item => item.municipio !== targetMun && item.municipio === "Municipio X" && !hasKeyword(item));
-
-  const remainingOthers = (targetMun === "Municipio X")
-    ? [...remainingOstia, ...remainingInland]
-    : [...remainingInland, ...remainingOstia];
-
+  // Priorità rigorosa al territorio richiesto. Non riempire con enti di tutta Roma.
+  // Per zone non riconosciute occorre conferma manuale del Municipio.
   const combined = [
     ...customMatching,
     ...munAndKeyword,
     ...munOnly,
-    ...otherMunKeyword,
-    ...remainingOthers
+    ...otherMunKeyword
   ];
 
   const uniqueList: LocalCooperative[] = [];
