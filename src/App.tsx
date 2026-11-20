@@ -431,7 +431,7 @@ export default function App() {
       <main className="flex-1 max-w-6xl w-full mx-auto p-3 sm:p-4 md:p-6 flex flex-col justify-center">
         
         {/* STEP 1: FORM */}
-        <div className="sr-only" aria-hidden="true">
+        <div className="fixed bottom-4 right-4 z-50">
           <MissingEntryReport ref={nationalityReport} category="nazionalita" value={isOtherNationality ? customNationality : ""} />
           <MissingEntryReport ref={jobReport} category="mestiere" value={isOtherJob ? customJob : ""} />
         </div>
